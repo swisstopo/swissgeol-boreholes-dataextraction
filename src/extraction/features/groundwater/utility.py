@@ -79,7 +79,7 @@ def extract_elevation(text: str) -> float | None:
         r"(\d+(\.\d+)?)\s*m\s*u\.m\.",
         r"(\d+(\.\d+)?)\s*m\s*ur.",
         r"(\d{3,}\.\d{1,2})(?!\d)",  # Matches a float number with less than 2 digits after the decimal point
-        r"(\d{3,})\s*m",
+        r"(\d{3,})\s*m(?!m)",  # "m" but not "mm" (e.g. a "600 mm" drilling diameter is not a 600m elevation)
     ]
 
     elevation = None

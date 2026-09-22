@@ -130,7 +130,8 @@ def aggregate_non_skipped_intervals(
                 current_block = current_block.concatenate(pair.block) if current_block else pair.block
             current_interval = pair.depth_interval
 
-    processed_pairs.append(IntervalBlockPair(current_interval, current_block))
+    if current_block is not None:
+        processed_pairs.append(IntervalBlockPair(current_interval, current_block))
     return processed_pairs
 
 

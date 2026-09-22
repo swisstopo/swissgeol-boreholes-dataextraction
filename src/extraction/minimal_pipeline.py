@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import pymupdf
 from dotenv import load_dotenv
 
-from extraction.features.extract import extract_page, extract_sidebar_information
+from extraction.features.extract import BoreholeExtractor
 from extraction.features.metadata.borehole_name_extraction import extract_borehole_names
 from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarQualityMetrics
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
@@ -94,7 +94,9 @@ class ExtractionContext:
         text_lines = extract_text_lines(page)
         long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
         strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
-        table_structures = detect_table_structures(page, long_or_horizontal_lines, text_lines, table_detection_params)
+        table_structures = detect_table_structures(
+            page.rect.width, page.rect.height, long_or_horizontal_lines, text_lines, table_detection_params
+        )
 
         return cls(
             text_lines=text_lines,
@@ -165,6 +167,7 @@ def extract_page_features(
     language_config = material_description_config.get(language, {})
     material_keywords = language_config.get("including_expressions", [])
     split_threshold = matching_params.get("compound_split_threshold", 0.4)
+    page_number = page_index + 1
 
     valid_descriptions = []
     if material_keywords:
@@ -178,34 +181,37 @@ def extract_page_features(
 
     number_of_valid_borehole_descriptions = len(valid_descriptions)
 
-    sidebar_information = extract_sidebar_information(
+    # Extract sidebar information
+    sidebar_information = BoreholeExtractor(
         extraction_context.text_lines,
         extraction_context.long_or_horizontal_lines,
         extraction_context.all_geometric_lines,
         extraction_context.table_structures,
         extraction_context.strip_logs,
         language,
-        page_index,
-        page,
+        page_number,
+        page.rect.width,
+        page.rect.height,
         line_detection_params,
-        None,  # analytics parameter
+        analytics=None,
         **matching_params,
-    )
+    ).extract_sidebars_with_quality_metrics()
 
     if extract_boreholes:
-        extracted_boreholes = extract_page(
+        extracted_boreholes = BoreholeExtractor(
             extraction_context.text_lines,
             extraction_context.long_or_horizontal_lines,
             extraction_context.all_geometric_lines,
             extraction_context.table_structures,
             extraction_context.strip_logs,
             language,
-            page_index,
-            page,
+            page_number,
+            page.rect.width,
+            page.rect.height,
             line_detection_params,
-            None,  # analytics parameter
+            analytics=None,
             **matching_params,
-        )
+        ).process_page()
     else:
         extracted_boreholes = []
 

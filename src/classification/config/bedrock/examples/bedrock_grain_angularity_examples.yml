@@ -1,0 +1,110 @@
+baseline: |
+  not_specified:
+    description:
+      No grain angularity information is present or inferable. Use when the
+      description contains no roundness or angularity qualifier — neither
+      explicit terms nor implied shape. Pure soil texture, colour, plasticity,
+      or compactness descriptions without any grain-shape language stay here.
+      Never combine not_specified with any other class.
+    keywords:
+      de: [keine Angabe, unbekannt, nicht beschrieben]
+      fr: [sans indication]
+      it: [non specificato]
+      en: [not specified]
+
+  very_angular:
+    description:
+      Very angular — grains with sharp, fresh edges and no rounding whatsoever.
+      Typical of crushed stone (Brechschotter), freshly broken rock fragments,
+      or sharp-grained sand (scharfer Sand). The primary German signals are
+      "scharfkantig" and "scharfer Sand". Use when the description explicitly
+      indicates sharp edges beyond normal angular. Extremely rare in natural
+      sediments; more common in quarried or mechanically crushed material.
+    keywords:
+      de: [scharfkantig, scharfkantiger, scharfer Sand, Brechschotter]
+      fr: [très anguleux, arêtes vives]
+      it: [molto angoloso]
+      en: [very angular, sharp-edged, crushed]
+
+  angular:
+    description:
+      Angular — grains with clearly sharp corners and edges, little or no
+      rounding. The primary German signals are "eckig" and "kantig" used as
+      standalone modifiers or as the starting end of a range expression.
+      "Kantig" and "eckig" used alone, or in combinations such as "eckig und
+      gerundet", "gerundet bis eckig", "kantig bis gut gerundet", or "eckig
+      bis angerundet" all trigger angular. Also assign angular when a range
+      expression starts from an angular end (e.g. "eckig bis kantengerundet",
+      "kantig bis rund"). French: "anguleux" as a standalone or range-start
+      qualifier.
+    keywords:
+      de: [eckig, kantig, kantig bis, eckig und, eckig bis, kantig-gerundet, kantig bis gut gerundet]
+      fr: [anguleux, angulaire, éléments anguleux, cailloux anguleux, blocs anguleux]
+      it: [angoloso, spigoloso]
+      en: [angular]
+
+  sub_angular:
+    description:
+      Sub-angular — grains with edges slightly worn but still clearly angular
+      overall. The primary German signal is "kantengerundet" (edge-rounded),
+      meaning corners have been slightly smoothed. Also triggered by compound
+      forms: "kantengerundet bis gerundet" (→ sub_angular + rounded),
+      "eckig bis kantengerundet", "kantengerundet-gerundet". Use sub_angular
+      whenever "kantengerundet" appears, regardless of whether it is the sole
+      modifier or part of a range. French: "subanguleux".
+    keywords:
+      de: [kantengerundet, kantengerunder, kanten- bis, kanten bis, eckig bis kantengerundet]
+      fr: [subanguleux, subangulaire, éléments subanguleux, cailloux subanguleux]
+      it: [subangoloso]
+      en: [sub-angular, subangular, edge-rounded]
+
+  sub_rounded:
+    description:
+      Sub-rounded — grains with corners noticeably worn but faces still
+      somewhat irregular. The primary German signal is "angerundet" (partially
+      rounded). Common in range expressions: "angerundet bis gerundet" (→
+      sub_rounded + rounded), "eckig bis angerundet" (→ angular + sub_rounded),
+      "kantengerundet bis angerundet" (→ sub_angular + sub_rounded). Use
+      sub_rounded whenever "angerundet" appears as a modifier, whether alone
+      or as part of a range expression. French: "subarrondi", "subarrondis".
+    keywords:
+      de: [angerundet, angerundet bis, bis angerundet, gerundet bis angerundet]
+      fr: [subarrondi, subarrondis, éléments subarrondis, cailloux subarrondis]
+      it: [subarrotondato]
+      en: [sub-rounded, subrounded]
+
+  rounded:
+    description:
+      Rounded — grains with smooth, curved surfaces and few sharp edges.
+      The primary German signal is "gerundet" used alone or as the terminal
+      end of a range expression. "Gerundet" alone → rounded. "Gerundet bis
+      rund" or "gerundet-rund" → rounded + well_rounded. "Gerundet bis eckig"
+      or "eckig und gerundet" → rounded + angular. Common range expressions
+      that include rounded: "angerundet bis gerundet" (sub_rounded + rounded),
+      "kantengerundet bis gerundet" (sub_angular + rounded). French: "arrondi",
+      "arrondis", "arrondis à subarrondis" (→ rounded + sub_rounded), "roulés"
+      when used without "bien" qualifier.
+    keywords:
+      de: [gerundet, Korn gerundet, Komponenten gerundet, gerundet bis, gerundet-rund, gerundet bis eckig]
+      fr: [arrondi, arrondis, cailloux arrondis, éléments arrondis, roulés, arrondis à subarrondis, arrondis ou subarrondis]
+      it: [arrotondato, arrotondati]
+      en: [rounded]
+
+  well_rounded:
+    description:
+      Well-rounded — grains with completely smooth, spherical or disc-like
+      surfaces and no visible edges. The primary German signals are "gut
+      gerundet" and "rund" (round). "Rund" alone always means well_rounded
+      when used as a grain-shape descriptor (not as part of "gerundet-rund"
+      which means the range gerundet to rund, i.e. rounded + well_rounded).
+      "Gut gerundet" always → well_rounded. Common range expressions ending
+      in well_rounded: "kantengerundet bis rund" (sub_angular + well_rounded),
+      "kantig bis gut gerundet" (angular + well_rounded), "kanten bis gut
+      gerundet" (sub_angular + well_rounded), "angerundet bis gut gerundet"
+      (sub_rounded + well_rounded). French: "bien arrondis", "bien roulés",
+      "galets bien arrondis", "éléments roulés" in fluvial context.
+    keywords:
+      de: [gut gerundet, rund, Korn rund, gerundet bis rund, vorwiegend rund, gut abgerundet]
+      fr: [bien arrondis, bien roulés, bien arrondi, galets bien arrondis, pierres bien arrondies, éléments roulés]
+      it: [ben arrotondato, molto arrotondato]
+      en: [well-rounded, well rounded]

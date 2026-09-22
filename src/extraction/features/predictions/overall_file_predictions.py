@@ -2,22 +2,14 @@
 
 import dataclasses
 
-from extraction.evaluation.benchmark.ground_truth import GroundTruth
-from extraction.evaluation.layer_evaluator import LayerEvaluator
-from extraction.features.metadata.metadata import FileMetadata
-from extraction.features.predictions.borehole_predictions import (
-    BoreholePredictions,
-    FilePredictionsWithGroundTruth,
-)
-from extraction.features.predictions.file_predictions import FilePredictions
-from extraction.features.predictions.predictions import AllBoreholePredictionsWithGroundTruth
+from extraction.features.predictions.file_predictions import FilePredictionsWithMetrics
 
 
 @dataclasses.dataclass
 class OverallFilePredictions:
     """A class to represent predictions for all files."""
 
-    file_predictions_list: list[FilePredictions] = dataclasses.field(default_factory=list)
+    file_predictions_list: list[FilePredictionsWithMetrics] = dataclasses.field(default_factory=list)
 
     def contains(self, filename: str) -> bool:
         """Check if `file_predictions_list` contains `filename`.
@@ -28,13 +20,13 @@ class OverallFilePredictions:
         Returns:
             bool: True if `file_predictions_list` contains `filename`, else False.
         """
-        return any(file.file_name == filename for file in self.file_predictions_list)
+        return any(file.filename == filename for file in self.file_predictions_list)
 
-    def add_file_predictions(self, file_predictions: FilePredictions) -> None:
+    def add_file_predictions(self, file_predictions: FilePredictionsWithMetrics) -> None:
         """Add file predictions to the list of file predictions.
 
         Args:
-            file_predictions (FilePredictions): The file predictions to add.
+            file_predictions (FilePredictionsWithMetrics): The file predictions to add.
         """
         self.file_predictions_list.append(file_predictions)
 
@@ -45,12 +37,12 @@ class OverallFilePredictions:
             dict: The metadata of the predictions as a dictionary.
         """
         return {
-            "_".join([file_prediction.file_name, str(borehole_prediction.borehole_index)]): {
+            "_".join([file_prediction.filename, str(borehole_prediction.borehole_index)]): {
                 "file_metadata": file_prediction.file_metadata.to_json(),
                 "borehole_metadata": borehole_prediction.metadata.to_json(),
             }
             for file_prediction in self.file_predictions_list
-            for borehole_prediction in file_prediction.borehole_predictions_list
+            for borehole_prediction in file_prediction.boreholes
         }
 
     def to_json(self) -> dict:
@@ -59,7 +51,7 @@ class OverallFilePredictions:
         Returns:
             dict: A dictionary representation of the object.
         """
-        return {fp.file_name: fp.to_json() for fp in self.file_predictions_list}
+        return {fp.filename: fp.to_json() for fp in self.file_predictions_list}
 
     @classmethod
     def from_json(cls, prediction_from_file: dict) -> "OverallFilePredictions":
@@ -72,34 +64,6 @@ class OverallFilePredictions:
             OverallFilePredictions: The object.
         """
         overall_file_predictions = OverallFilePredictions()
-        for file_name, file_data in prediction_from_file.items():
-            file_metadata = FileMetadata.from_json(file_data, file_name)
-
-            borehole_list = [BoreholePredictions.from_json(bh_data, file_name) for bh_data in file_data["boreholes"]]
-
-            overall_file_predictions.add_file_predictions(FilePredictions(borehole_list, file_metadata, file_name))
+        for filename, file_data in prediction_from_file.items():
+            overall_file_predictions.add_file_predictions(FilePredictionsWithMetrics.from_json(file_data, filename))
         return overall_file_predictions
-
-    def match_with_ground_truth(self, ground_truth: GroundTruth) -> AllBoreholePredictionsWithGroundTruth:
-        """Match the extracted boreholes with corresponding boreholes in the ground truth data.
-
-        This is done by comparing the layers of the extracted boreholes with those in the groundtruth.
-
-        Args:
-            ground_truth (GroundTruth): The ground truth.
-
-        Returns:
-            AllBoreholePredictionsWithGroundTruth: all predictions per borehole with associated ground truth data.
-        """
-        files = []
-        for file_predictions in self.file_predictions_list:
-            boreholes = []
-            ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
-            if ground_truth_for_file:
-                boreholes = LayerEvaluator.match_predictions_with_ground_truth(file_predictions, ground_truth_for_file)
-            files.append(
-                FilePredictionsWithGroundTruth(
-                    file_predictions.file_name, file_predictions.file_metadata.language, boreholes
-                )
-            )
-        return AllBoreholePredictionsWithGroundTruth(files)

@@ -7,19 +7,22 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TypeVar
 
 from tqdm import tqdm
 
+from core.ground_truth import GroundTruth
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_tracking
 from core.pipeline_runner import MultiBenchmarkRunner, PipelineRunner, PipelineRunResult
 from extraction.core.extract import ExtractionResult, extract
-from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.benchmark.score import (
     ExtractionBenchmarkSummary,
     evaluate_all_predictions,
+    evaluate_prediction,
 )
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
+from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.utils.benchmark_utils import log_metric_mlflow
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, create_analytics
@@ -131,6 +134,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
             [self.input_directory] if self.input_directory.is_file() else list(self.input_directory.glob("*.pdf"))
         )
         n_documents = len(pdf_files)
+        ground_truth = GroundTruth(self.ground_truth_path) if self.ground_truth_path else None
 
         # Load any partially-completed predictions for resume support
         predictions = read_json_predictions(predictions_path_tmp)
@@ -142,20 +146,17 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
                 continue
 
             logger.info(f"Processing file: {pdf_file.name}")
-            try:
-                result = extract(
-                    file=pdf_file, filename=pdf_file.name, part=self.options.part, analytics=self.analytics
-                )
-                predictions.add_file_predictions(result.predictions)
 
-                if self.on_file_done is not None:
-                    self.on_file_done(result, self.out_directory, pdf_file)
+            result = extract(file=pdf_file, filename=pdf_file.name, part=self.options.part, analytics=self.analytics)
+            prediction_with_metrics = evaluate_prediction(result.predictions, ground_truth)
+            predictions.add_file_predictions(prediction_with_metrics)
 
-                logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
-                write_json_predictions(path=predictions_path_tmp, predictions=predictions)
+            if self.on_file_done is not None:
+                # Pass updated results to callback
+                self.on_file_done(result, self.out_directory, pdf_file)
 
-            except Exception as e:
-                logger.error(f"Unexpected error in file {pdf_file.name}. Trace: {e}")
+            logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
+            write_json_predictions(path=predictions_path_tmp, predictions=predictions)
 
         return PipelineRunResult(result=predictions, n_documents=n_documents)
 
@@ -180,15 +181,59 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
 
         logger.info(f"Metadata written to {self.metadata_path}")
         with open(self.metadata_path, "w", encoding="utf8") as file:
-            json.dump(run_result.result.get_metadata_as_dict(), file, ensure_ascii=False)
+            json.dump(run_result.result.get_metadata_as_dict(), file, ensure_ascii=False, indent=2)
+
+        self._log_per_borehole_predictions(
+            run_result,
+            "predictions_name.json",
+            lambda borehole: borehole.metadata.name,
+            lambda name: {"name": name.feature.name, "is_correct": name.feature.is_correct},
+        )
+
+        self._log_per_borehole_predictions(
+            run_result,
+            "predictions_elevation.json",
+            lambda borehole: borehole.metadata.elevation,
+            lambda elevation: {"elevation": elevation.feature.elevation, "is_correct": elevation.feature.is_correct},
+        )
+
+        self._log_per_borehole_predictions(
+            run_result,
+            "predictions_coordinates.json",
+            lambda borehole: borehole.metadata.coordinates,
+            lambda coordinates: {
+                "E": coordinates.feature.east.coordinate_value,
+                "N": coordinates.feature.north.coordinate_value,
+                "is_correct": coordinates.feature.is_correct,
+            },
+        )
 
         if self.options.matching_analytics and self.analytics is not None:
             analytics_output_path = self.out_directory / "matching_params_analytics.json"
             self.analytics.save_analytics(analytics_output_path)
             logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
 
-        if self.options.part == "all":
-            logger.info(f"Writing predictions to final JSON file {self.predictions_path}")
+    T = TypeVar("T")
+
+    def _log_per_borehole_predictions(
+        self,
+        run_result: PipelineRunResult[OverallFilePredictions],
+        filename: str,
+        get_feature: Callable[[BoreholePredictions], T | None],
+        get_data: Callable[[T], dict],
+    ) -> None:
+        data = {}
+        for predictions in sorted(run_result.result.file_predictions_list, key=lambda x: x.filename):
+            data[predictions.filename] = []
+            for borehole in predictions.boreholes:
+                if feature := get_feature(borehole):
+                    data[predictions.filename].append(get_data(feature))
+
+        filepath = self.out_directory / filename
+        with open(filepath, "w", encoding="utf8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=2)
+        if mlflow:
+            mlflow.log_artifact(filepath)
 
 
 @dataclass(kw_only=True)

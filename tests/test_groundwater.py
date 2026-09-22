@@ -2,22 +2,25 @@
 
 from datetime import date
 
+import pymupdf
 import pytest
 
 from core.benchmark_utils import Metrics
-from extraction.evaluation.benchmark.ground_truth import GroundTruth
-from extraction.evaluation.groundwater_evaluator import (
-    GroundwaterEvaluator,
-    GroundwaterMetrics,
-    OverallGroundwaterMetrics,
-)
-from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
-from extraction.features.groundwater.utility import extract_date
+from core.ground_truth import GroundTruth
+from extraction.evaluation.groundwater_evaluator import GroundwaterEvaluator
+from extraction.features.groundwater.groundwater import Groundwater, GroundwatersInBorehole
+from extraction.features.groundwater.utility import extract_date, extract_elevation
 from extraction.features.predictions.borehole_predictions import (
     BoreholeGroundwaterWithGroundTruth,
     FileGroundwaterWithGroundTruth,
 )
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
+
+
+def _gw(depth=None, date_=None, elevation=None, rect=(0, 0, 1, 1), page=1) -> FeatureOnPage:
+    return FeatureOnPage(
+        feature=Groundwater(depth=depth, date=date_, elevation=elevation), rect=pymupdf.Rect(*rect), page=page
+    )
 
 
 @pytest.fixture
@@ -85,78 +88,38 @@ def test_extract_date(date_test_cases):
         assert extract_date(text) == (expected_date, expected_str)
 
 
-def test_add_groundwater_metrics(sample_metrics):
-    """Test adding GroundwaterMetrics to OverallGroundwaterMetrics."""
-    overall_metrics = OverallGroundwaterMetrics()
-    gw_metrics = GroundwaterMetrics(
-        groundwater_metrics=sample_metrics,
-        groundwater_depth_metrics=sample_metrics,
-        groundwater_elevation_metrics=sample_metrics,
-        groundwater_date_metrics=sample_metrics,
-        filename="test_file_1",
-    )
-    overall_metrics.add_groundwater_metrics(gw_metrics)
-    assert len(overall_metrics.groundwater_metrics) == 1
-    assert overall_metrics.groundwater_metrics[0].filename == "test_file_1"
-
-
-def test_groundwater_metrics_to_overall_metrics(sample_metrics):
-    """Test conversion of groundwater metrics to OverallMetrics."""
-    overall_metrics = OverallGroundwaterMetrics()
-    gw_metrics1 = GroundwaterMetrics(groundwater_metrics=sample_metrics, filename="file1")
-    gw_metrics2 = GroundwaterMetrics(groundwater_metrics=sample_metrics, filename="file2")
-    overall_metrics.add_groundwater_metrics(gw_metrics1)
-    overall_metrics.add_groundwater_metrics(gw_metrics2)
-    overall = overall_metrics.groundwater_metrics_to_overall_metrics()
-    assert "file1" in overall.metrics
-    assert "file2" in overall.metrics
-    assert overall.metrics["file1"] == gw_metrics1.groundwater_metrics
-    assert overall.metrics["file2"] == gw_metrics2.groundwater_metrics
-
-
-def test_groundwater_depth_metrics_to_overall_metrics(sample_metrics):
-    """Test conversion of groundwater depth metrics to OverallMetrics."""
-    overall_metrics = OverallGroundwaterMetrics()
-    gw_metrics = GroundwaterMetrics(groundwater_depth_metrics=sample_metrics, filename="file_depth")
-    overall_metrics.add_groundwater_metrics(gw_metrics)
-    overall = overall_metrics.groundwater_depth_metrics_to_overall_metrics()
-    assert "file_depth" in overall.metrics
-    assert overall.metrics["file_depth"] == gw_metrics.groundwater_depth_metrics
+def test_extract_elevation_ignores_millimeter_diameters():
+    """A "600 mm" drilling diameter must not be read as a 600m elevation."""
+    assert extract_elevation("Greiferbohrung 0 600 mm") is None
+    assert extract_elevation("448.07 m") == 448.07
+    assert extract_elevation("430.75 m u.M.") == 430.75
 
 
 def test_evaluate_with_ground_truth(groundtruth, groundwater_at_2m22, groundwater_at_3m22):
     """Test the evaluate method with available ground truth data."""
     # In this test, there is one borehole, with two groundwater measurement for it.
-    groundwater_entries = {
-        "example_borehole_profile.pdf": [GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22])]
-    }
+    groundwaterinborehole_list = [GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22])]
 
     # dictionary used to "manually" build the FileGroundwaterWithGroundTruth object
-    pred_to_gt_matching = {"example_borehole_profile.pdf": {0: 0}}
-    evaluator = GroundwaterEvaluator(
-        groundwater_list=[
-            FileGroundwaterWithGroundTruth(
-                filename=filename,
-                boreholes=[
-                    BoreholeGroundwaterWithGroundTruth(
-                        groundwater=groundwaterinborehole,
-                        ground_truth=groundtruth.for_file(filename).get(pred_to_gt_matching[filename][pred_idx])[
-                            "groundwater"
-                        ],
-                    )
-                    for pred_idx, groundwaterinborehole in enumerate(groundwaterinborehole_list)
-                ],
-            )
-            for filename, groundwaterinborehole_list in groundwater_entries.items()
-        ]
+    filename = "example_borehole_profile.pdf"
+    pred_to_gt_matching = {filename: {0: 0}}
+
+    groundwater_metric = GroundwaterEvaluator.evaluate(
+        FileGroundwaterWithGroundTruth(
+            filename=filename,
+            boreholes=[
+                BoreholeGroundwaterWithGroundTruth(
+                    groundwater=groundwaterinborehole,
+                    ground_truth=groundtruth.for_file(filename)[pred_to_gt_matching[filename][pred_idx]].groundwater,
+                )
+                for pred_idx, groundwaterinborehole in enumerate(groundwaterinborehole_list)
+            ],
+        )
     )
-    overall_metrics = evaluator.evaluate()
 
     # Assertions
-    assert isinstance(overall_metrics, OverallGroundwaterMetrics)
-    assert len(overall_metrics.groundwater_metrics) == 1
-    assert overall_metrics.groundwater_metrics[0].filename == "example_borehole_profile.pdf"
-    assert overall_metrics.groundwater_metrics[0].groundwater_metrics.precision == 1.0
+    assert groundwater_metric.filename == filename
+    assert groundwater_metric.groundwater_metrics.precision == 1.0
 
 
 def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwater_at_3m22):
@@ -170,45 +133,111 @@ def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwat
     # Sample groundwater entries
     gt_matching_index_example = {0: 0}
     gt_matching_index_example_2 = {0: 1, 1: 0}
-    evaluator = GroundwaterEvaluator(
-        groundwater_list=[
-            FileGroundwaterWithGroundTruth(
-                filename="example_borehole_profile.pdf",
-                boreholes=[
-                    BoreholeGroundwaterWithGroundTruth(
-                        groundwater=GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22]),
-                        ground_truth=groundtruth.for_file("example_borehole_profile.pdf").get(
-                            gt_matching_index_example[0]
-                        )["groundwater"],
-                    )
-                ],
-            ),
-            FileGroundwaterWithGroundTruth(
-                filename="example_borehole_profile_2.pdf",
-                boreholes=[
-                    BoreholeGroundwaterWithGroundTruth(
-                        groundwater=GroundwatersInBorehole([groundwater_at_2m22]),
-                        ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf").get(
-                            gt_matching_index_example_2[0]
-                        )["groundwater"],
-                    ),
-                    BoreholeGroundwaterWithGroundTruth(
-                        groundwater=GroundwatersInBorehole([groundwater_at_3m22]),
-                        ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf").get(
-                            gt_matching_index_example_2[1]
-                        )["groundwater"],
-                    ),
-                ],
-            ),
-        ]
+
+    gw_1 = GroundwaterEvaluator.evaluate(
+        FileGroundwaterWithGroundTruth(
+            filename="example_borehole_profile.pdf",
+            boreholes=[
+                BoreholeGroundwaterWithGroundTruth(
+                    groundwater=GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22]),
+                    ground_truth=groundtruth.for_file("example_borehole_profile.pdf")[
+                        gt_matching_index_example[0]
+                    ].groundwater,
+                )
+            ],
+        )
     )
-    overall_metrics = evaluator.evaluate()
+    gw_2 = GroundwaterEvaluator.evaluate(
+        FileGroundwaterWithGroundTruth(
+            filename="example_borehole_profile_2.pdf",
+            boreholes=[
+                BoreholeGroundwaterWithGroundTruth(
+                    groundwater=GroundwatersInBorehole([groundwater_at_2m22]),
+                    ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf")[
+                        gt_matching_index_example_2[0]
+                    ].groundwater,
+                ),
+                BoreholeGroundwaterWithGroundTruth(
+                    groundwater=GroundwatersInBorehole([groundwater_at_3m22]),
+                    ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf")[
+                        gt_matching_index_example_2[1]
+                    ].groundwater,
+                ),
+            ],
+        ),
+    )
 
     # Assertions
-    assert len(overall_metrics.groundwater_metrics) == 2
-    assert overall_metrics.groundwater_metrics[0].filename == "example_borehole_profile.pdf"
-    assert overall_metrics.groundwater_metrics[1].filename == "example_borehole_profile_2.pdf"
-    assert overall_metrics.groundwater_metrics[0].groundwater_metrics.f1 == 1.0
-    assert overall_metrics.groundwater_metrics[1].groundwater_metrics.tp == 2.0
-    assert overall_metrics.groundwater_metrics[1].groundwater_metrics.fn == 0.0
-    assert overall_metrics.groundwater_metrics[1].groundwater_metrics.fp == 0.0
+    assert gw_1.filename == "example_borehole_profile.pdf"
+    assert gw_1.groundwater_metrics.f1 == 1.0
+    assert gw_1.groundwater_metrics.tp == 2.0
+    assert gw_1.groundwater_metrics.fn == 0.0
+    assert gw_1.groundwater_metrics.fp == 0.0
+
+    assert gw_2.filename == "example_borehole_profile_2.pdf"
+    assert gw_2.groundwater_metrics.f1 == 1.0
+    assert gw_2.groundwater_metrics.tp == 2.0
+    assert gw_2.groundwater_metrics.fn == 0.0
+    assert gw_2.groundwater_metrics.fp == 0.0
+
+
+def test_merge_compatible_candidates_merges_unique_pair():
+    """Two candidates with no overlapping fields are merged into one."""
+    depth_only = _gw(depth=5.0, rect=(0, 0, 1, 1))
+    date_only = _gw(date_=date(2020, 3, 12), rect=(2, 2, 3, 3))
+
+    borehole = GroundwatersInBorehole([depth_only, date_only])
+    borehole.merge_compatible_candidates()
+
+    assert len(borehole.features) == 1
+    feature = borehole.features[0].feature
+    assert (feature.depth, feature.date, feature.elevation) == (5.0, date(2020, 3, 12), None)
+    assert borehole.features[0].rect == pymupdf.Rect(0, 0, 3, 3)
+
+
+def test_merge_compatible_candidates_blocks_on_conflicting_field():
+    """A shared field with different values must not be merged."""
+    a = _gw(depth=5.0, date_=date(2020, 3, 12))
+    b = _gw(elevation=400.0, date_=date(2020, 1, 1))
+
+    borehole = GroundwatersInBorehole([a, b])
+    borehole.merge_compatible_candidates()
+
+    assert len(borehole.features) == 2
+
+
+def test_merge_compatible_candidates_merges_mutually_compatible_group():
+    """Depth, date and elevation extracted as three separate candidates merge into a single reading."""
+    depth_only = _gw(depth=5.0)
+    date_only = _gw(date_=date(2020, 3, 12))
+    elevation_only = _gw(elevation=400.0)
+
+    borehole = GroundwatersInBorehole([depth_only, date_only, elevation_only])
+    borehole.merge_compatible_candidates()
+
+    assert len(borehole.features) == 1
+    feature = borehole.features[0].feature
+    assert (feature.depth, feature.date, feature.elevation) == (5.0, date(2020, 3, 12), 400.0)
+
+
+def test_merge_compatible_candidates_leaves_pairwise_conflicting_group_unmerged():
+    """Three candidates that all conflict with each other pairwise are left as three separate readings."""
+    depth_5 = _gw(depth=5.0)
+    depth_9 = _gw(depth=9.0)
+    depth_13 = _gw(depth=13.0)
+
+    borehole = GroundwatersInBorehole([depth_5, depth_9, depth_13])
+    borehole.merge_compatible_candidates()
+
+    assert len(borehole.features) == 3
+
+
+def test_merge_compatible_candidates_does_not_merge_across_pages():
+    """Non-conflicting candidates found on different pages must not be merged into one reading."""
+    depth_only = _gw(depth=5.0, page=1)
+    date_only = _gw(date_=date(2020, 3, 12), page=2)
+
+    borehole = GroundwatersInBorehole([depth_only, date_only])
+    borehole.merge_compatible_candidates()
+
+    assert len(borehole.features) == 2

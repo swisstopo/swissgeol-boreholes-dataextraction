@@ -6,13 +6,13 @@ from typing import ClassVar
 
 import numpy as np
 
-from extraction.features.stratigraphy.base.sidebar_entry import LayerIdentifierEntry
 from extraction.features.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
-from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
+from extraction.features.stratigraphy.interval.interval import Interval, IntervalBlockPair, IntervalZone
 from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
     get_optimal_intervals_with_text,
 )
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
+from extraction.features.stratigraphy.sidebarentry.sidebar_entry import LayerIdentifierEntry
 from swissgeol_doc_processing.geometry.util import y_overlap_significant_smallest
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
@@ -39,9 +39,11 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         Returns:
             list[IntervalZone]: A list of interval zones.
         """
-        if not self.entries:
-            return []
-        return self.get_zones_from_entries(self.entries, include_open_ended=True)
+        zones = []
+        for index, entry in enumerate(self.entries):
+            next_entry_rect = self.entries[index + 1].rect if len(self.entries) > index + 1 else None
+            zones.append(IntervalZone(entry.rect, next_entry_rect, Interval(start=None, end=None)))
+        return zones
 
     @staticmethod
     def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:
@@ -94,15 +96,10 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         last_end_depth = None
         for block in blocks:
             block_lines_header = self._get_header(block)  # Get the header lines from the block
+            ignored_lines = block_lines_header if self._ignore_header(block_lines_header, block.lines) else []
 
-            interval_block_pairs = self._extract_intervals_from_lines(block.lines)
+            interval_block_pairs = self._extract_intervals_from_lines(block.lines, ignored_lines)
             interval_block_pairs = get_optimal_intervals_with_text(interval_block_pairs)
-
-            ignored_lines = block_lines_header if self._ignore_header(block_lines_header, interval_block_pairs) else []
-            interval_block_pairs = [
-                IntervalBlockPair(pair.depth_interval, self._clean_block(pair.block, ignored_lines))
-                for pair in interval_block_pairs
-            ]
 
             if (
                 interval_block_pairs
@@ -130,7 +127,8 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
         return result
 
-    def _extract_intervals_from_lines(self, lines: list[TextLine]) -> list[IntervalBlockPair]:
+    @staticmethod
+    def _extract_intervals_from_lines(lines: list[TextLine], header_lines: list[TextLine]) -> list[IntervalBlockPair]:
         """Extract depth interval from text lines from a material description.
 
         For borehole profiles using the Deriaz layout, depth intervals are typically embedded within the material
@@ -148,6 +146,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
         Args:
             lines (list[TextLine]): The lines to extract the depth interval from.
+            header_lines (list[TextLine]): Header lines to exclude from the extracted interval descriptions.
 
         Returns:
             list[IntervalBlockPair]: a list of interval-block-pairs that can be extracted from the given lines
@@ -158,13 +157,12 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         start_depth = None
         prev_line = None
         prev_interval = None
-        for idx, line in enumerate(lines):
+        for line in lines:
             a_to_b_interval, line_without_depths = AToBIntervalExtractor.from_text(line, require_start_of_string=False)
-            # First line of the block is stripped of its (potential) leading depths
-            final_line = line if idx != 0 else line_without_depths
+
             if prev_line and not a_to_b_interval and not prev_interval:
-                # if depth was not found in the previous and current lines, we look for a depth wrapping arround.
-                combined_lines = TextLine(prev_line.words + line.words)
+                # if depth was not found in the previous and current lines, we look for a depth wrapping around.
+                combined_lines = TextLine(prev_line.words + line.words, prev_line.text_angle)
                 a_to_b_interval, _ = AToBIntervalExtractor.from_text(combined_lines, require_start_of_string=False)
             prev_interval = a_to_b_interval
             prev_line = line
@@ -173,16 +171,19 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             if a_to_b_interval:
                 # We assume that the first depth encountered is the start depth, and we reject further depth values
                 # smaller than this first one. This avoids some false positives (e.g. GeoQuat 3339.pdf).
-                if not start_depth:
+                if start_depth is None:
                     start_depth = a_to_b_interval.start.value
                 if a_to_b_interval.start.value >= start_depth:
-                    if current_interval:
+                    if current_interval and current_block:
                         entries.append(IntervalBlockPair(current_interval, TextBlock(current_block)))
                         current_block = []
-                        final_line = line_without_depths  # start of a new depth block, strip leading depth
                     current_interval = a_to_b_interval
-            if final_line and final_line.words:
-                current_block.append(final_line)
+
+            # First line of the block is stripped of its (potential) leading depths
+            processed_line = None if line in header_lines else line_without_depths if len(current_block) == 0 else line
+
+            if processed_line and processed_line.words:
+                current_block.append(processed_line)
         if current_block:
             entries.append(IntervalBlockPair(current_interval, TextBlock(current_block)))
 
@@ -207,14 +208,12 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             if any(y_overlap_significant_smallest(line.rect, identifier.rect, 0.8) for identifier in self.entries)
         ]
 
-    def _ignore_header(
-        self, block_lines_header: list[TextLine], interval_block_pairs: list[IntervalBlockPair]
-    ) -> bool:
+    def _ignore_header(self, header_lines: list[TextLine], block_lines: list[TextLine]) -> bool:
         """Analyse whether to ignore header lines from the blocks based on the layer identifiers.
 
         Args:
-            block_lines_header (list[TextLine]): The header lines.
-            interval_block_pairs (list[IntervalBlockPair]): The list of interval block pairs to filter.
+            header_lines (list[TextLine]): The header lines.
+            block_lines (list[TextLine]): All the lines of the block.
 
         Returns:
             bool: True if the header lines should be ignored, False otherwise.
@@ -232,40 +231,16 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
                     return True
             return False
 
-        other_lines_presence = any(
-            [line not in block_lines_header for pair in interval_block_pairs for line in pair.block.lines]
-        )
+        other_lines_presence = any(line not in header_lines for line in block_lines)
 
-        header_capitalized = _is_header_capitalized(block_lines_header)
+        header_capitalized = _is_header_capitalized(header_lines)
 
         depths_in_header = bool(
             AToBIntervalExtractor.from_text(
-                TextLine([word for line in block_lines_header for word in line.words]), require_start_of_string=False
+                TextLine([word for line in header_lines for word in line.words]), require_start_of_string=False
             )[0]
         )
 
         # If the header is capitalized, or there is other lines than the header and depth info are found in the header
         # we exclude the header from the material description.
         return header_capitalized or (depths_in_header and other_lines_presence)
-
-    def _clean_block(self, block: TextBlock, ignored_lines: list[TextLine]) -> TextBlock:
-        """Remove the headers in ignored_lines and the layer identifiers from the block.
-
-        Args:
-            block (TextBlock): The block to clean.
-            ignored_lines (list[TextLine]): The lines to ignore, such as headers.
-
-        Returns:
-            TextBlock: The cleaned block with the ignored lines and layer identifiers removed.
-        """
-        # Create set of entry values
-        entry_values = {entry.value.strip() for entry in self.entries}
-
-        new_word_lists = [
-            [word for word in line.words if word.text.strip() not in entry_values]
-            for line in block.lines
-            if line not in ignored_lines
-        ]
-
-        # Only keep lines that have words remaining after filtering
-        return TextBlock([TextLine(words) for words in new_word_lists if words])

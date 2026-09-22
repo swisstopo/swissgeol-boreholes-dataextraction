@@ -71,7 +71,7 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
             )
         ]
         if words:
-            text_lines.append(TextLine(words))
+            text_lines.append(TextLine(words, text_line.text_angle))
 
     # Extract the information based on the format type
     if extract_data_request.format == FormatTypes.COORDINATES:

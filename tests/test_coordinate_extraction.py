@@ -27,7 +27,7 @@ def test_to_jsonLV95():  # noqa: D103
     coord = LV95Coordinate(
         east=CoordinateEntry(coordinate_value=2789456), north=CoordinateEntry(coordinate_value=1123012)
     )
-    assert coord.to_json() == {"E": 2789456, "N": 1123012}
+    assert coord.to_json() == {"E": 2789456, "N": 1123012, "is_correct": None}
 
 
 def test_swap_coordinates():  # noqa: D103
@@ -52,7 +52,7 @@ def test_to_jsonLV03():  # noqa: D103
     coord = LV03Coordinate(
         east=CoordinateEntry(coordinate_value=789456), north=CoordinateEntry(coordinate_value=123012)
     )
-    assert coord.to_json() == {"E": 789456, "N": 123012}
+    assert coord.to_json() == {"E": 789456, "N": 123012, "is_correct": None}
 
 
 doc = pymupdf.open(find_project_root() / "example" / "example_borehole_profile.pdf")
@@ -279,6 +279,12 @@ def test_get_single_decimal_coordinates():
     coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].feature.east.coordinate_value == 2600000.6
     assert coordinates[0].feature.north.coordinate_value == 1200000.5
+
+    # From ZH 680270004-bp.pdf
+    lines = _create_simple_lines(["680' '100/270'120"])
+    coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
+    assert coordinates[0].feature.east.coordinate_value == 680100
+    assert coordinates[0].feature.north.coordinate_value == 270120
 
 
 def test_get_double_decimal_coordinates():

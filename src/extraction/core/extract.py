@@ -9,18 +9,19 @@ from pathlib import Path
 
 import pymupdf
 
-from extraction.features.extract import extract_page
-from extraction.features.groundwater.groundwater_extraction import (
-    GroundwaterInDocument,
-    GroundwaterLevelExtractor,
-)
-from extraction.features.metadata.borehole_name_extraction import NameInDocument, extract_borehole_names
+from extraction.features.extract import BoreholeExtractor
+from extraction.features.groundwater.groundwater_extraction import GroundwaterLevelExtractor
+from extraction.features.metadata.borehole_name_extraction import extract_borehole_names
 from extraction.features.metadata.metadata import FileMetadata, MetadataInDocument
 from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.file_predictions import FilePredictions
-from extraction.features.predictions.predictions import BoreholeListBuilder
+from extraction.features.predictions.predictions import (
+    PageMetadataCandidates,
+    assign_page_metadata,
+    build_borehole_predictions,
+    resolve_boreholeless_pages,
+)
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
-from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
@@ -112,9 +113,8 @@ def extract(
         metadata = MetadataInDocument.from_document(doc, file_metadata.language, matching_params)
 
         # Save the predictions to the overall predictions object, initialize common variables
-        all_groundwater_entries = GroundwaterInDocument([], filename)
-        all_name_entries = NameInDocument([], filename)
         boreholes_per_page = []
+        boreholeless_pages = []
         pages_data = []
 
         if part != "all":
@@ -128,31 +128,33 @@ def extract(
             text_lines = extract_text_lines(page)
             long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
             name_entries = extract_borehole_names(text_lines, name_detection_params)
-            all_name_entries.name_feature_list.extend(name_entries)
+            elevation_entries = [e for e in metadata.elevations if e.page_number == page_number]
+            coordinate_entries = [c for c in metadata.coordinates if c.page_number == page_number]
 
             # Detect table structures on the page
             table_structures = detect_table_structures(
-                page, long_or_horizontal_lines, text_lines, table_detection_params
+                page.rect.width, page.rect.height, long_or_horizontal_lines, text_lines, table_detection_params
             )
 
             # Detect strip logs on the page
             strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
 
             # Extract the stratigraphy
-            page_layers = extract_page(
+            extracted_boreholes = BoreholeExtractor(
                 text_lines,
                 long_or_horizontal_lines,
                 all_geometric_lines,
                 table_structures,
                 strip_logs,
                 file_metadata.language,
-                page_index,
-                page,
+                page_number,
+                page.rect.width,
+                page.rect.height,
                 line_detection_params,
                 analytics,
                 **matching_params,
-            )
-            boreholes_per_page.append(page_layers)
+            ).process_page()
+            boreholes_per_page.append(extracted_boreholes)
 
             # Extract the groundwater levels
             groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language, matching_params)
@@ -160,9 +162,23 @@ def extract(
                 page_number=page_number,
                 text_lines=text_lines,
                 geometric_lines=long_or_horizontal_lines,
-                extracted_boreholes=page_layers,
+                extracted_boreholes=extracted_boreholes,
             )
-            all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
+
+            # Match this page's metadata to this page's boreholes, before any cross-page merging happens.
+            page_metadata = PageMetadataCandidates(
+                page_index=page_index,
+                names=name_entries,
+                elevations=elevation_entries,
+                coordinates=coordinate_entries,
+                groundwater=groundwater_entries,
+            )
+            if extracted_boreholes:
+                assign_page_metadata(extracted_boreholes, page_metadata)
+            elif name_entries or elevation_entries or coordinate_entries or groundwater_entries:
+                # No borehole on this page to match against (e.g. a metadata-only cover page); try to
+                # attach it to an adjacent page's borehole once all pages have been processed.
+                boreholeless_pages.append(page_metadata)
 
             # Store per-page intermediate data for optional downstream visualization
             pages_data.append(
@@ -174,22 +190,16 @@ def extract(
                 )
             )
 
+        resolve_boreholeless_pages(boreholes_per_page, boreholeless_pages)
+
         # Merge detections if possible
-        layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
+        merged_boreholes = merge_boreholes(boreholes_per_page, matching_params)
 
-        # create list of BoreholePrediction objects with all the separate lists
-        borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(
-            layers_with_bb_in_document=layers_with_bb_in_document,
-            file_name=filename,
-            groundwater_in_doc=all_groundwater_entries,
-            names_in_doc=all_name_entries,
-            elevations_list=metadata.elevations,
-            coordinates_list=metadata.coordinates,
-        ).build()
+        for borehole in merged_boreholes:
+            borehole.post_processing()
 
-        # now that the matching is done, duplicated groundwater can be removed and depths info can be set
-        for borehole in borehole_predictions_list:
-            borehole.filter_groundwater_entries()
+        # create list of BoreholePrediction objects; metadata is already matched and merged per borehole
+        borehole_predictions_list: list[BoreholePredictions] = build_borehole_predictions(merged_boreholes)
 
         return ExtractionResult(
             predictions=FilePredictions(borehole_predictions_list, file_metadata, filename),

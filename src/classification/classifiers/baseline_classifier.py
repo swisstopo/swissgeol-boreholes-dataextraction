@@ -5,8 +5,7 @@ import re
 from nltk.stem.snowball import SnowballStemmer
 
 from classification.classifiers.classifier import Classifier
-from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_loader import LayerInformation
+from classification.utils.datasets.classification import ClassificationSystem, LayerInformation
 
 
 class BaselineClassifier(Classifier):
@@ -97,7 +96,7 @@ class BaselineClassifier(Classifier):
 
         return None
 
-    def classify(self, layer_descriptions: list[LayerInformation]):
+    def classify(self, layer_descriptions: list[LayerInformation]) -> list[LayerInformation]:
         """Classifies the material descriptions of layer information objects into the selected classes.
 
         The method modifies the input object, layer_descriptions by setting their prediction_class attribute.
@@ -115,6 +114,9 @@ class BaselineClassifier(Classifier):
 
         Args:
             layer_descriptions (list[LayerInformation]): The LayerInformation object
+
+        Returns:
+            list[LayerInformation]: Updated LayerInformation object
         """
         for layer in layer_descriptions:
             patterns = self.config["patterns"][layer.language]
@@ -157,6 +159,8 @@ class BaselineClassifier(Classifier):
             sorted_matches = sorted(matches, key=lambda x: (-x["coverage"], -x["complexity"], x["match_positions"]))
 
             if sorted_matches:
-                layer.prediction_class = sorted_matches[0]["class"]
+                layer.prediction_class = [sorted_matches[0]["class"]]
             else:
-                layer.prediction_class = layer.class_system.get_default_class_value()
+                layer.prediction_class = [layer.class_system.get_default_class_value()]
+
+        return layer_descriptions

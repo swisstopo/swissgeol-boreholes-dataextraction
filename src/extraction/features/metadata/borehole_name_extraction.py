@@ -47,35 +47,23 @@ class BoreholeName(ExtractedFeature):
         Returns:
             dict: The object as a dictionary.
         """
-        return {"name": self.name, "confidence": self.confidence}
+        return {
+            "name": self.name,
+            "confidence": self.confidence,
+            "is_correct": self.is_correct,
+        }
 
     @classmethod
     def from_json(cls, data: dict) -> BoreholeName:
         """Converts a dictionary to an object.
 
         Args:
-            data (dict): A dictionary representing the elevation information.
+            data (dict): A dictionary representing the name information.
 
         Returns:
             BoreholeName: The borehole's name information object.
         """
-        return cls(name=data["name"], confidence=data["confidence"])
-
-
-@dataclass
-class NameInDocument:
-    """Class for extracted borehole name information from a document."""
-
-    name_feature_list: list[FeatureOnPage[BoreholeName]]
-    filename: str
-
-    def to_json(self) -> list[dict]:
-        """Converts the object to a list of dictionaries.
-
-        Returns:
-            list[dict]: The object as a list of dictionaries.
-        """
-        return [entry.to_json() for entry in self.name_feature_list]
+        return cls(name=data["name"], confidence=data["confidence"], is_correct=data.get("is_correct"))
 
 
 def _find_closest_nearby_line(

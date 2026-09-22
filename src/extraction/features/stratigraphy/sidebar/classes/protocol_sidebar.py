@@ -39,7 +39,7 @@ class ProtocolSidebar(DepthColumEntrySidebar):
         for i, interval in enumerate(intervals):
             if has_open_start:
                 # Shift zone boundaries by one entry
-                start_rect = self.entries[i].rect if i > 0 else None
+                start_rect = self.entries[i].rect
                 end_rect = self.entries[i + 1].rect if i + 1 < len(self.entries) else None
             else:
                 start_rect = interval.start.rect if interval.start else None

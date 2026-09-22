@@ -5,7 +5,6 @@ from dataclasses import dataclass
 import pymupdf
 
 from extraction.features.stratigraphy.interval.interval import Interval
-from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature
@@ -24,7 +23,7 @@ class LayerDepthsEntry(RectWithPageMixin):
         self.value = value
         self.rect_with_page = RectWithPage(rect, page_number)
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """Convert the LayerDepthsEntry object to a JSON serializable format."""
         return {
             "value": self.value,
@@ -43,7 +42,7 @@ class LayerDepthsEntry(RectWithPageMixin):
             data (dict): A dictionary representing the layer depths entry.
 
         Returns:
-            DepthColumnEntry: the corresponding LayerDepthsEntry object.
+            LayerDepthsEntry: the corresponding LayerDepthsEntry object.
         """
         return cls(
             value=data["value"], rect=pymupdf.Rect(data["rect"]) if data["rect"] else None, page_number=data["page"]
@@ -106,9 +105,13 @@ class LayerDepths(ExtractedFeature):
 
         return rect
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """Convert the LayerDepths object to a JSON serializable format."""
-        return {"start": self.start.to_json() if self.start else None, "end": self.end.to_json() if self.end else None}
+        return {
+            "start": self.start.to_json() if self.start else None,
+            "end": self.end.to_json() if self.end else None,
+            "is_correct": self.is_correct,
+        }
 
     @classmethod
     def from_json(cls, data: dict) -> "LayerDepths":
@@ -118,11 +121,12 @@ class LayerDepths(ExtractedFeature):
             data (dict): A dictionary representing the layer depths.
 
         Returns:
-            DepthColumnEntry: the corresponding LayerDepths object.
+            LayerDepths: the corresponding LayerDepths object.
         """
         return cls(
             start=LayerDepthsEntry.from_json(data["start"]) if data["start"] else None,
             end=LayerDepthsEntry.from_json(data["end"]) if data["end"] else None,
+            is_correct=data.get("is_correct"),
         )
 
     @classmethod
@@ -198,6 +202,7 @@ class Layer(ExtractedFeature):
         return {
             "material_description": self.material_description.to_json() if self.material_description else None,
             "depths": self.depths.to_json() if self.depths else None,
+            "is_correct": self.is_correct,
         }
 
     @classmethod
@@ -205,58 +210,12 @@ class Layer(ExtractedFeature):
         """Converts a dictionary to an object.
 
         Args:
-            data (dict): A dictionarie representing the layer.
+            data (dict): A dictionary representing the layer.
 
         Returns:
-            list[LayerPrediction]: A list of LayerPrediction objects.
+            Layer: The corresponding Layer object.
         """
         material_prediction = MaterialDescription.from_json(data["material_description"])
         depths = LayerDepths.from_json(data["depths"]) if ("depths" in data and data["depths"] is not None) else None
 
-        return Layer(material_description=material_prediction, depths=depths)
-
-
-@dataclass
-class LayersInBorehole:
-    """Represent the data for all layers in a borehole profile."""
-
-    layers: list[Layer]
-
-    def to_json(self):
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return [layer.to_json() for layer in self.layers]
-
-    @classmethod
-    def from_json(cls, json_object) -> "LayersInBorehole":
-        """Extract a LayersInBorehole object from a json dictionary.
-
-        Args:
-            json_object (dict): The object as a dictionary.
-
-        Returns:
-            LayersInBorehole: The LayersInBorehole object.
-        """
-        return cls([Layer.from_json(layer_data) for layer_data in json_object])
-
-
-@dataclass
-class ExtractedBorehole:
-    """A class to store the extracted information of one single borehole."""
-
-    predictions: list[Layer]
-    bounding_boxes: list[PageBoundingBoxes]  # one for each page that the borehole spans
-
-
-class LayersInDocument:
-    """A class to represent predictions for a single document.
-
-    It contains a list of LayersInBorehole, not just a list of Layer.
-    """
-
-    def __init__(self, boreholes_layers: list[ExtractedBorehole], filename: str):
-        self.boreholes_layers_with_bb = boreholes_layers
-        self.filename = filename
+        return Layer(material_description=material_prediction, depths=depths, is_correct=data.get("is_correct"))

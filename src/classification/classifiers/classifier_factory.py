@@ -8,7 +8,7 @@ from classification.classifiers.baseline_classifier import BaselineClassifier
 from classification.classifiers.bert_classifier import BertClassifier
 from classification.classifiers.classifier import ClassifierTypes
 from classification.classifiers.dummy_classifier import DummyClassifier
-from classification.utils.classification_classes import ClassificationSystem
+from classification.utils.datasets.classification import ClassificationSystem
 
 logger = logging.getLogger(__name__)
 
@@ -20,16 +20,20 @@ class ClassifierFactory:
     def create_classifier(
         classifier_type: ClassifierTypes,
         classification_system: type[ClassificationSystem],
-        model_path: Path,
+        model_path: Path | str | None,
         out_directory_bedrock: Path,
+        backbone_path: Path | None = None,
+        tokenizer_path: Path | None = None,
     ):
         """Factory method to create a classifier instance.
 
         Args:
             classifier_type (ClassifierTypes): Type of classifier to create.
             classification_system (type[ClassificationSystem]): The classification system to be used.
-            model_path (Path): Path to the model (used for BERT).
+            model_path (Path | str | None): Local path to the model or a HuggingFace model ID string (used for BERT).
             out_directory_bedrock (Path): Output directory for Bedrock classifier.
+            backbone_path (Path | None): Path to backbone.safetensors for split-model BERT loading.
+            tokenizer_path (Path | None): Directory containing the tokenizer files for BERT.
 
         Returns:
             A classifier instance.
@@ -42,7 +46,9 @@ class ClassifierFactory:
         elif classifier_type == ClassifierTypes.BASELINE:
             return BaselineClassifier(classification_system)
         elif classifier_type == ClassifierTypes.BERT:
-            return BertClassifier(model_path, classification_system)
+            return BertClassifier(
+                model_path, classification_system, backbone_path=backbone_path, tokenizer_path=tokenizer_path
+            )
         elif classifier_type == ClassifierTypes.BEDROCK:
             return AWSBedrockClassifier(out_directory_bedrock, classification_system)
         else:

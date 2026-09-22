@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import fastquadtree
 import pymupdf
 
-from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from extraction.features.stratigraphy.sidebar.classes.protocol_sidebar import ProtocolSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNoise, noise_count
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
+from extraction.features.stratigraphy.sidebar.utils.entries_per_table import TableEntries
+from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.table_detection import TableStructure
 
 
@@ -22,7 +23,7 @@ class ProtocolSidebarExtractor:
     def find_in_words(
         all_words: list[TextWord],
         lines: list[TextLine],
-        line_rtree: fastquadtree.RectQuadTreeObjects,
+        line_rtree: TextLineRTree,
         used_entry_rects: list[pymupdf.Rect],
         table_structures: list[TableStructure],
         sidebar_params: dict,
@@ -32,7 +33,7 @@ class ProtocolSidebarExtractor:
         Args:
             all_words (list[TextWord]): All words in the page.
             lines (list[TextLine]): All text lines in the page.
-            line_rtree (fastquadtree.RectQuadTreeObjects): Pre-built R-tree for spatial queries.
+            line_rtree (TextLineRTree): Pre-built R-tree for spatial queries.
             used_entry_rects (list[pymupdf.Rect]): Part of the document to ignore.
             table_structures: list[TableStructure]:  List of table structures.
             sidebar_params (dict): Parameters for the ProtocolSidebar objects.
@@ -49,7 +50,17 @@ class ProtocolSidebarExtractor:
         if not entries:
             return []
 
-        clusters = Cluster[DepthColumnEntry].create_clusters(entries, lambda entry: entry.rect, allow_size_two=True)
+        entry_partitions = TableEntries.group_entries_by_table(table_structures, entries)
+        clusters = [
+            cluster
+            for partition in entry_partitions
+            if partition.table is not None  # we only consider ProtocolSidebars within detected tables
+            for cluster in Cluster[DepthColumnEntry].create_clusters(
+                partition.entries,
+                table_structure=partition.table,
+                allow_size_two=True,
+            )
+        ]
 
         min_entries = sidebar_params.get("min_entries")
         header_keywords = sidebar_params.get("header_keywords")
@@ -65,13 +76,7 @@ class ProtocolSidebarExtractor:
 
         processed_sidebars = []
         for sidebar in candidate_sidebars:
-            has_header = ProtocolSidebarExtractor._is_below_header(sidebar, header_lines, max_header_gap)
-            is_in_table = any(
-                table_structure.bounding_rect.contains(sidebar.rect) for table_structure in table_structures
-            )
-            if not is_in_table:
-                continue
-            if not has_header:
+            if not ProtocolSidebarExtractor._is_below_header(sidebar, header_lines, max_header_gap):
                 continue
 
             processed = sidebar.process()
