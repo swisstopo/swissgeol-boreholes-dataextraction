@@ -63,11 +63,17 @@ test_sets:
     classification_system: color_consolidated
     ground_truths:
       - zurich_ground_truth.json
-  extra_consolidated:
+  extra_negative_consolidated:
     classification_system: color_consolidated
     ground_truths:
       - bert_extra/negative_ground_truth.json
+  extra_keywords_consolidated:
+    classification_system: color_consolidated
+    ground_truths:
       - bert_extra/color_extra_ground_truth.json
+  extra_counterfeits_consolidated:
+    classification_system: color_consolidated
+    ground_truths:
       - bert_extra/color_consolidated_counterfeit_ground_truth.json
   # Unconsolidated test (+ global)
   global_unconsolidated:
@@ -101,11 +107,17 @@ test_sets:
     classification_system: color_unconsolidated
     ground_truths:
       - zurich_ground_truth.json
-  extra_unconsolidated:
+  extra_negative_unconsolidated:
     classification_system: color_unconsolidated
     ground_truths:
       - bert_extra/negative_ground_truth.json
+  extra_keywords_unconsolidated:
+    classification_system: color_unconsolidated
+    ground_truths:
       - bert_extra/color_extra_ground_truth.json
+  extra_counterfeits_unconsolidated:
+    classification_system: color_unconsolidated
+    ground_truths:
       - bert_extra/color_unconsolidated_counterfeit_ground_truth.json
 
 # Custom Training hyperparameters

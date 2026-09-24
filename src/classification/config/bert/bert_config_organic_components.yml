@@ -42,10 +42,13 @@ test_sets:
     classification_system: organic_components
     ground_truths:
       - zurich_ground_truth.json
-  extra_organic_components:
+  extra_negative_organic_components:
     classification_system: organic_components
     ground_truths:
       - bert_extra/negative_ground_truth.json
+  extra_keywords_organic_components:
+    classification_system: organic_components
+    ground_truths:
       - bert_extra/organic_components_extra_ground_truth.json
 
 # Custom Training hyperparameters

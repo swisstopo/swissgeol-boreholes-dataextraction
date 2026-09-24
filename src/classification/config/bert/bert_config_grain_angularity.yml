@@ -36,10 +36,13 @@ test_sets:
     classification_system: grain_angularity
     ground_truths:
       - nagra_ground_truth.json
-  extra_grain_angularity:
+  extra_negative_grain_angularity:
     classification_system: grain_angularity
     ground_truths:
       - bert_extra/negative_ground_truth.json
+  extra_keywords_grain_angularity:
+    classification_system: grain_angularity
+    ground_truths:
       - bert_extra/grain_angularity_extra_ground_truth.json
 
 # Custom Training hyperparameters

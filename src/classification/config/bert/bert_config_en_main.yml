@@ -50,11 +50,17 @@ test_sets:
     classification_system: en_main
     ground_truths:
       - zurich_ground_truth.json
-  extra_en_main:
+  extra_negative_en_main:
     classification_system: en_main
     ground_truths:
       - bert_extra/negative_ground_truth.json
+  extra_keywords_en_main:
+    classification_system: en_main
+    ground_truths:
       - bert_extra/en_main_extra_ground_truth.json
+  extra_counterfeits_en_main:
+    classification_system: en_main
+    ground_truths:
       - bert_extra/en_main_counterfeit_ground_truth.json
 
 # Custom Training hyperparameters

@@ -56,11 +56,17 @@ test_sets:
     classification_system: lithology
     ground_truths:
       - zurich_ground_truth.json
-  extra_lithology:
+  extra_negative_lithology:
     classification_system: lithology
     ground_truths:
       - bert_extra/negative_ground_truth.json
+  extra_keywords_lithology:
+    classification_system: lithology
+    ground_truths:
       - bert_extra/lithology_extra_ground_truth.json
+  extra_counterfeits_lithology:
+    classification_system: lithology
+    ground_truths:
       - bert_extra/lithology_counterfeit_ground_truth.json
 
 # Custom Training hyperparameters

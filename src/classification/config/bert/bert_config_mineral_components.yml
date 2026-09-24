@@ -42,10 +42,13 @@ test_sets:
     classification_system: mineral_components
     ground_truths:
       - zurich_ground_truth_enhanced.json
-  extra_mineral_components:
+  extra_negative_mineral_components:
     classification_system: mineral_components
     ground_truths:
       - bert_extra/negative_ground_truth.json
+  extra_keywords_mineral_components:
+    classification_system: mineral_components
+    ground_truths:
       - bert_extra/mineral_components_extra_ground_truth.json
 
 # Custom Training hyperparameters

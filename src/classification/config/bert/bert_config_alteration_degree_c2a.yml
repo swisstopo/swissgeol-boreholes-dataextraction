@@ -22,6 +22,8 @@ test_sets:
     ground_truths:
       - geoquat_ground_truth.json
       - nagra_ground_truth.json
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/alteration_degree_extra_ground_truth.json
       - bert_extra/alteration_degree_consolidated_counterfeit_ground_truth.json
   geoquat_consolidated:
     classification_system: alteration_degree_consolidated
@@ -31,11 +33,17 @@ test_sets:
     classification_system: alteration_degree_consolidated
     ground_truths:
       - nagra_ground_truth.json
-  extra_consolidated:
+  extra_negative_consolidated:
     classification_system: alteration_degree_consolidated
     ground_truths:
       - bert_extra/negative_ground_truth.json
+  extra_keywords_consolidated:
+    classification_system: alteration_degree_consolidated
+    ground_truths:
       - bert_extra/alteration_degree_extra_ground_truth.json
+  extra_counterfeits_consolidated:
+    classification_system: alteration_degree_consolidated
+    ground_truths:
       - bert_extra/alteration_degree_consolidated_counterfeit_ground_truth.json
   # Unconsolidated test (+ global)
   global_unconsolidated:
