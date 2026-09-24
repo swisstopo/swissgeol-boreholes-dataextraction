@@ -36,7 +36,7 @@ matching_keywords_suffix:
   ]
 
 # Keyword to ignore in borehole name detection
-excluded_keywords: ["nr.", "nr", "n r", "n°", "nº", "no", "nummer"]
+excluded_keywords: ["nr.", "nr", "n r", "n°", "nº", "no", "nummer", "№"]
 
 # For matching_keywords_inner, respect the following rules
 # * Keyword is case sensitive

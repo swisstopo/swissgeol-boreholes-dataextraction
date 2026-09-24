@@ -32,7 +32,7 @@ def get_descriptions_blocks(
         # likely that descriptions are split in the absence of such a line.
         threshold = -no_sidebar_weights["line_weight"]
     else:
-        threshold = -0.2 * no_sidebar_weights["spacing_weight"]
+        threshold = -0.15 * no_sidebar_weights["spacing_weight"]
 
     for line_idx, affinity in enumerate(affinities):
         # note: the affinity of the first line is always 0.0
