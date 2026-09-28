@@ -7,20 +7,20 @@ All figures in the overview reflect the actual task performance, with the change
 | Dataset                            | Enhanced | Support (num classes) | Target | F1-macro       | F1-micro       | Kendall's Tau |
 |------------------------------------|----------|-----------------------|--------|----------------|----------------|---------------|
 | `accessory_components`             | x        |          152,083 (47) |  Multi |          0.842 |          0.972 |             - |
-| `alteration_degree_consolidated`   |          |             2,716 (8) | Single | 0.211 (+0.051) | 0.333 (−0.105) |             - |
+| `alteration_degree_consolidated`   |          |             2,716 (8) | Single |          0.324 |          0.663 |             - |
 | `alteration_degree_unconsolidated` |          |                41 (8) | Single |              - |              - |             - |
 | `cementation`                      | x        |           119,404 (7) | Single |          0.851 |          0.959 |             - |
-| `color_consolidated`*              |          |           16,143 (91) | Single |          0.487 |          0.752 |             - |
-| `color_unconsolidated`*            |          |           20,121 (91) | Single |          0.502 |          0.803 |             - |
-| `debris`                           |          |           70,084, (7) |  Multi |          0.797 |          0.983 |             - |
-| `en_main`                          |          |           89,842 (34) | Single |          0.859 |          0.905 |             - |
-| `en_secondary`                     |          |           89,842 (34) |   Rank |          0.808 |          0.945 |         0.744 |
+| `color_consolidated`*              |          |           16,143 (91) | Single |          0.xxx |          0.xxx |             - |
+| `color_unconsolidated`*            |          |           20,121 (91) | Single |          0.xxx |          0.xxx |             - |
+| `debris`                           |          |           70,084, (7) |  Multi |          0.xxx |          0.xxx |             - |
+| `en_main`                          |          |           89,842 (34) | Single |          0.xxx |          0.xxx |             - |
+| `en_secondary`                     |          |           89,842 (34) |   Rank |          0.xxx |          0.xxx |         0.xxx |
 | `grain_angularity`                 |          |            70,377 (8) |  Multi |          0.831 |          0.974 |             - |
 | `grain_shape`                      |          |            70,087 (5) |  Multi |          0.560 |          0.998 |             - |
-| `lithology`                        |          |           45,323 (61) | Single |          0.848 |          0.942 |             - |
+| `lithology`                        |          |           45,323 (61) | Single |          0.xxx |          0.xxx |             - |
 | `mineral_components`               | x        |         141,825 (111) |  Multi |          0.794 |          0.984 |             - |
 | `organic_components`               |          |           70,102 (11) |  Multi |          0.839 |          0.983 |             - |
-| `uscs`                             |          |            9,917 (38) | Single |          0.329 |          0.602 |             - |
+| `uscs`                             |          |            9,917 (38) | Single |          0.xxx |          0.xxx |             - |
 
 * Model jointly trained, same for both tasks.
 
@@ -42,11 +42,11 @@ All figures in the overview reflect the actual task performance, with the change
 
 | Test set   | Train set    | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro    | BERT F1-micro    |
 |------------|--------------|------------------|------------------|------------------|------------------|
-| Geoquat-C  | Consolidated | 0.179 (+0.000)   | 0.536 (+0.000)   | 0.296 (−0.096)   | 0.724 (−0.058)   |
+| Geoquat-C  | Consolidated | 0.179 (+0.000)   | 0.536 (+0.000)   | 0.305 (−0.087)   | 0.763 (−0.019)   |
 | Extra-NS-C | Consolidated | -                | -                | 1.000 (+1.000)   | 1.000 (+1.000)   |
-| Extra-KW-C | Consolidated | -                | -                | 0.436 (+0.365)   | 0.472 (+0.321)   |
-| Extra-CF-C | Consolidated | -                | -                | 0.786 (+0.692)   | 0.803 (+0.656)   |
-| Global-C   | Consolidated | -                | -                | 0.774 (+0.614)   | 0.788 (+0.350)   |
+| Extra-KW-C | Consolidated | -                | -                | 0.079 (+0.008)   | 0.132 (−0.019)   |
+| Extra-CF-C | Consolidated | -                | -                | 0.098 (+0.004)   | 0.140 (−0.007)   |
+| Global-C   | Consolidated | -                | -                | 0.324 (+0.164)   | 0.663 (+0.225)   |
 
 
 ## Cementation - Enhanced
