@@ -98,13 +98,6 @@ All figures in the overview reflect the actual task performance, with the change
 | Overall  | -                | -                | 0.690         | 0.979         |
 
 
-| Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
-|----------|------------------|------------------|---------------|---------------|
-| Geoquat  | 0.595            | 0.926            | 0.417         | 0.689         |
-| Extra-NS | -                | -                | 0.250         | 0.630         |
-| Extra-KW | -                | -                | 0.580         | 0.512         |
-| Overall  | -                | -                | 0.417         | 0.687         |
-
 
 ## EN Main
 

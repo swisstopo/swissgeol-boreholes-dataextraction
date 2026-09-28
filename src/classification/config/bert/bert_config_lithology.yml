@@ -1,7 +1,7 @@
 classification_system: "lithology"
 experiment_name: "lithology"
 model_path: "google-bert/bert-base-multilingual-uncased"
-use_class_balancing: true
+use_class_balancing: false
 inference_batch_size: 32
 
 # Training and testing sets
@@ -17,7 +17,6 @@ training_sets:
       - zurich_ground_truth.json
       - bert_extra/negative_ground_truth.json
       - bert_extra/lithology_extra_ground_truth.json
-      - bert_extra/lithology_counterfeit_ground_truth.json
 
 test_sets:
   global_lithology:

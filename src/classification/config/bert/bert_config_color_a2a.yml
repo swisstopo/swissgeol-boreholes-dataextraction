@@ -1,7 +1,7 @@
 classification_system: "color"
 experiment_name: "color_all_to_all"
 model_path: "google-bert/bert-base-multilingual-uncased"
-use_class_balancing: true
+use_class_balancing: false
 inference_batch_size: 32
 
 # Training and testing sets
@@ -14,7 +14,6 @@ training_sets:
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
       - zurich_ground_truth.json
-      - bert_extra/color_consolidated_counterfeit_ground_truth.json
   unconsolidated:
     classification_system: color_unconsolidated
     ground_truths:
@@ -23,12 +22,10 @@ training_sets:
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
       - zurich_ground_truth.json
-      - bert_extra/color_unconsolidated_counterfeit_ground_truth.json
   other:
     classification_system: color_unconsolidated
     ground_truths:
       - bert_extra/negative_ground_truth.json
-      - bert_extra/color_extra_ground_truth.json
 
 test_sets:
   # Consolidated test (+ global)
