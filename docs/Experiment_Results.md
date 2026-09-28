@@ -46,7 +46,7 @@ All figures in the overview reflect the actual task performance, with the change
 | Extra-NS-C | Consolidated | -                | -                | 1.000 (+1.000)   | 1.000 (+1.000)   |
 | Extra-KW-C | Consolidated | -                | -                | 0.436 (+0.365)   | 0.472 (+0.321)   |
 | Extra-CF-C | Consolidated | -                | -                | 0.786 (+0.692)   | 0.803 (+0.656)   |
-| Global-C   | Consolidated | -                | -                | 0.211 (+0.051)   | 0.333 (−0.105)   |
+| Global-C   | Consolidated | -                | -                | 0.774 (+0.614)   | 0.788 (+0.350)   |
 
 
 ## Cementation - Enhanced
