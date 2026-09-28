@@ -10,22 +10,22 @@ from pathlib import Path
 import pymupdf
 
 from extraction.features.extract import BoreholeExtractor
-from extraction.features.groundwater.groundwater_extraction import (
-    GroundwaterInDocument,
-    GroundwaterLevelExtractor,
-)
-from extraction.features.metadata.borehole_name_extraction import BoreholeName, NameInDocument, extract_borehole_names
+from extraction.features.groundwater.groundwater_extraction import GroundwaterLevelExtractor
+from extraction.features.metadata.borehole_name_extraction import extract_borehole_names
 from extraction.features.metadata.metadata import FileMetadata, MetadataInDocument
 from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.file_predictions import FilePredictions
-from extraction.features.predictions.predictions import BoreholeListBuilder
+from extraction.features.predictions.predictions import (
+    PageMetadataCandidates,
+    assign_page_metadata,
+    build_borehole_predictions,
+    resolve_boreholeless_pages,
+)
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
-from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, LayersInDocument
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
-from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.strip_log_detection import StripLog, detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import TableStructure, detect_table_structures
@@ -37,25 +37,6 @@ table_detection_params = read_params("table_detection_params.yml")
 striplog_detection_params = read_params("striplog_detection_params.yml")
 
 logger = logging.getLogger(__name__)
-
-
-def _assign_borehole_names(
-    extracted_boreholes: list[ExtractedBorehole], name_entries: list[FeatureOnPage[BoreholeName]]
-) -> None:
-    """Attach the closest name candidate found on this same page to each borehole, if any were found.
-
-    A page essentially always has at most a couple of boreholes and name candidates, so matching by
-    vertical distance to the top of each borehole's column on this page is enough.
-
-    Args:
-        extracted_boreholes (list[ExtractedBorehole]): The boreholes just extracted from this page.
-        name_entries (list[FeatureOnPage[BoreholeName]]): The name candidates found on this same page.
-    """
-    if not name_entries:
-        return
-    for borehole in extracted_boreholes:
-        borehole_top = borehole.bounding_boxes[-1].get_outer_rect().y0
-        borehole.name = min(name_entries, key=lambda entry: abs(entry.rect.y0 - borehole_top))
 
 
 @dataclasses.dataclass
@@ -102,17 +83,6 @@ def open_pdf(
     doc.close()
 
 
-def _reference_line_width(borehole: ExtractedBorehole) -> float | None:
-    """Return the width of each borehole's longest description line.
-
-    `MaterialDescription.insert_line_breaks` uses this as a reference for how long a line can get
-    before the layout wraps it. Scoped per borehole (not per file): different boreholes, even across
-    pages of the same file, can have differently sized description columns.
-    """
-    line_widths = [line.rect.width for layer in borehole.predictions for line in layer.material_description.lines]
-    return max(line_widths, default=None)
-
-
 def extract(
     file: Path | BytesIO,
     filename: str,
@@ -143,9 +113,8 @@ def extract(
         metadata = MetadataInDocument.from_document(doc, file_metadata.language, matching_params)
 
         # Save the predictions to the overall predictions object, initialize common variables
-        all_groundwater_entries = GroundwaterInDocument([], filename)
-        all_name_entries = NameInDocument([], filename)
         boreholes_per_page = []
+        boreholeless_pages = []
         pages_data = []
 
         if part != "all":
@@ -159,7 +128,8 @@ def extract(
             text_lines = extract_text_lines(page)
             long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
             name_entries = extract_borehole_names(text_lines, name_detection_params)
-            all_name_entries.name_feature_list.extend(name_entries)
+            elevation_entries = [e for e in metadata.elevations if e.page_number == page_number]
+            coordinate_entries = [c for c in metadata.coordinates if c.page_number == page_number]
 
             # Detect table structures on the page
             table_structures = detect_table_structures(
@@ -184,7 +154,6 @@ def extract(
                 analytics,
                 **matching_params,
             ).process_page()
-            _assign_borehole_names(extracted_boreholes, name_entries)
             boreholes_per_page.append(extracted_boreholes)
 
             # Extract the groundwater levels
@@ -195,7 +164,21 @@ def extract(
                 geometric_lines=long_or_horizontal_lines,
                 extracted_boreholes=extracted_boreholes,
             )
-            all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
+
+            # Match this page's metadata to this page's boreholes, before any cross-page merging happens.
+            page_metadata = PageMetadataCandidates(
+                page_index=page_index,
+                names=name_entries,
+                elevations=elevation_entries,
+                coordinates=coordinate_entries,
+                groundwater=groundwater_entries,
+            )
+            if extracted_boreholes:
+                assign_page_metadata(extracted_boreholes, page_metadata)
+            elif name_entries or elevation_entries or coordinate_entries or groundwater_entries:
+                # No borehole on this page to match against (e.g. a metadata-only cover page); try to
+                # attach it to an adjacent page's borehole once all pages have been processed.
+                boreholeless_pages.append(page_metadata)
 
             # Store per-page intermediate data for optional downstream visualization
             pages_data.append(
@@ -207,27 +190,16 @@ def extract(
                 )
             )
 
+        resolve_boreholeless_pages(boreholes_per_page, boreholeless_pages)
+
         # Merge detections if possible
-        layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
+        merged_boreholes = merge_boreholes(boreholes_per_page, matching_params)
 
-        for borehole in layers_with_bb_in_document.boreholes_layers_with_bb:
-            max_line_width = _reference_line_width(borehole)
-            for layer in borehole.predictions:
-                layer.material_description.insert_line_breaks(max_line_width)
+        for borehole in merged_boreholes:
+            borehole.post_processing()
 
-        # create list of BoreholePrediction objects with all the separate lists
-        borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(
-            layers_with_bb_in_document=layers_with_bb_in_document,
-            file_name=filename,
-            groundwater_in_doc=all_groundwater_entries,
-            names_in_doc=all_name_entries,
-            elevations_list=metadata.elevations,
-            coordinates_list=metadata.coordinates,
-        ).build()
-
-        # now that the matching is done, duplicated groundwater can be removed and depths info can be set
-        for borehole in borehole_predictions_list:
-            borehole.filter_groundwater_entries()
+        # create list of BoreholePrediction objects; metadata is already matched and merged per borehole
+        borehole_predictions_list: list[BoreholePredictions] = build_borehole_predictions(merged_boreholes)
 
         return ExtractionResult(
             predictions=FilePredictions(borehole_predictions_list, file_metadata, filename),
