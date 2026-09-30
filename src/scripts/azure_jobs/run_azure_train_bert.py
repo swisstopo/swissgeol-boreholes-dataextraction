@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-ENVIRONMENT_VERSION = "4"
+ENVIRONMENT_VERSION = "4"  # Use env on Poland Central (SC, SN deprecated)
 
 
 def get_environment(ml_client: MLClient) -> Environment:

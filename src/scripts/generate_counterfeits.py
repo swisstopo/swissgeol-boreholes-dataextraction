@@ -161,14 +161,14 @@ class AWSBedrockCounterfeits:
 
         Args:
             layers (list[LayerInformationCounterfeits]): Items to rewrite.
-            batch_size (int): Number of items sent per Bedrock call. Defaults to 5.
+            batch_size (int): Number of items sent per Bedrock call. Defaults to 10.
 
         Returns:
             list[LayerInformationCounterfeits]: All items, in the same order, with counterfeits filled in.
         """
         batches = await tqdm_asyncio.gather(
             *[self._process_batch(layers=layers[i : i + batch_size]) for i in range(0, len(layers), batch_size)],
-            desc="Classifying files",
+            desc="Generating counterfeits",
         )
         return [item for batch in batches for item in batch]
 
@@ -286,14 +286,14 @@ def main(
     limited: bool = False,
     example_version: str = "baseline",
 ) -> None:
-    """Load ground truth samples for a classification system and generate counterfeits for the train split.
+    """Load ground truth samples for a classification system and generate counterfeits.
 
     Args:
         ground_truth_path (Path): Path to the ground truth JSON file.
         classification_system (str): Name of the classification system to generate counterfeits for.
         examples_path (Path): Path to the YAML file of classification examples shown to Bedrock.
-        output_folder (Path): Output JSON file path for the generated counterfeit ground truth.
-        n_samples (int): Number of train samples to generate counterfeits for. Defaults to 10.
+        output_folder (Path): Output folder path for the generated counterfeit ground truth.
+        n_samples (int): Number of samples to generate counterfeits for. Defaults to 10.
         seed (int): Seed for the random target-class assignment. Defaults to 0.
         limited (bool): If True, only generate counterfeits for classes that appear at least once in
             the sampled layers. Defaults to False.

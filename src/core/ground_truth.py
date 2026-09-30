@@ -47,7 +47,7 @@ class GroundTruthUnconsolidated(ExcludeNoneBaseModel):
 
     @field_validator("uscs", mode="before")
     @classmethod
-    def validate_uscs(cls, value: str | list[str] | None) -> str:
+    def validate_uscs(cls, value: str | list[str] | None) -> list[str] | None:
         """Ensure the USCS field is a list."""
         return [value] if isinstance(value, str) else value
 
