@@ -41,32 +41,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = [
-    "pytest==8.4.1",
-    "pytest-cov==6.2.1",
-    "moto==5.1.10",
-]
-lint = [
-    "pre-commit==4.3.0",
-]
-azure-local = [
-    "azure-ai-ml",
-    "azure-identity",
-]
-azure-remote = [
-    "azureml-mlflow",
-]
-experiment-tracking = [
-    "mlflow>=2.15.0,<3.0.0",
-    "pygit2==1.18.2"
-]
-visualize = [
-    "matplotlib==3.10.5"
-]
-devtools = [
-    "tqdm==4.67.1",
-    "pyinstrument==5.1.1",
-]
+test = ["pytest==8.4.1", "pytest-cov==6.2.1", "moto==5.1.10"]
+lint = ["pre-commit==4.3.0"]
+azure-local = ["azure-ai-ml", "azure-identity"]
+azure-remote = ["azureml-mlflow"]
+experiment-tracking = ["mlflow>=2.15.0,<3.0.0", "pygit2==1.18.2"]
+visualize = ["matplotlib==3.10.5"]
+devtools = ["tqdm==4.67.1", "pyinstrument==5.1.1"]
 deep-learning = [
     "transformers==4.55.2",
     "datasets==4.0.0",
@@ -82,7 +63,9 @@ deep-learning-cpu = [
 ]
 
 # Use deep-learning for GPU training, deep-learning-cpu for Docker / CPU-only inference.
-all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools, deep-learning]"]
+all = [
+    "swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools, deep-learning]",
+]
 
 # ---- Configuration for package building
 [tool.hatch.version]
@@ -102,11 +85,7 @@ distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
 
 
 [tool.hatch.build.targets.wheel]
-packages = [
-    "src/swissgeol_doc_processing",
-    "src/extraction",
-    "src/core"
-]
+packages = ["src/swissgeol_doc_processing", "src/extraction", "src/core"]
 
 [project.scripts]
 boreholes-extract-all = "extraction.main:click_pipeline"
@@ -135,9 +114,9 @@ select = [
     "I",
 ]
 ignore = [
-    "D102",  # Missing docstring in a public method
-    "D105",  # Missing docstring in magic method
-    "D107",  # Missing docstring in `__init__`
+    "D102", # Missing docstring in a public method
+    "D105", # Missing docstring in magic method
+    "D107", # Missing docstring in `__init__`
 ]
 
 [tool.ruff]
@@ -155,9 +134,7 @@ url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [tool.uv.sources]
-torch = [
-  { index = "pytorch-cpu", marker = "extra == 'deep-learning-cpu'" },
-]
+torch = [{ index = "pytorch-cpu", marker = "extra == 'deep-learning-cpu'" }]
 
 # ---- Configuration for pytest
 [tool.pytest.ini_options]
@@ -167,5 +144,5 @@ torch = [
 # boto3: https://github.com/boto/boto3/issues/3889
 filterwarnings = [
     "ignore:.*Swig.*has no __module__ attribute:DeprecationWarning",
-    "ignore:datetime.datetime.utcnow:DeprecationWarning:botocore"
+    "ignore:datetime.datetime.utcnow:DeprecationWarning:botocore",
 ]
