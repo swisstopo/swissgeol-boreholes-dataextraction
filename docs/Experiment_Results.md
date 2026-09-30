@@ -17,7 +17,7 @@ All figures in the overview reflect the actual task performance, with the change
 | `en_secondary`                     |          |           89,842 (34) |   Rank |          0.775 |          0.926 |         0.714 |
 | `grain_angularity`                 |          |            70,377 (8) |  Multi |          0.831 |          0.974 |             - |
 | `grain_shape`                      |          |            70,087 (5) |  Multi |          0.560 |          0.998 |             - |
-| `lithology`                        |          |           45,323 (61) | Single |          0.xxx |          0.xxx |             - |
+| `lithology`                        |          |           45,323 (61) | Single |          0.929 |          0.941 |             - |
 | `mineral_components`               | x        |         141,825 (111) |  Multi |          0.794 |          0.984 |             - |
 | `organic_components`               |          |           70,102 (11) |  Multi |          0.839 |          0.983 |             - |
 | `uscs`                             |          |            9,917 (38) | Single |          0.300 |          0.597 |             - |
