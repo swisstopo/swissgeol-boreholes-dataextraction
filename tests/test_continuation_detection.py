@@ -1,5 +1,7 @@
 """Test suite for merge boreholes in continuation detection."""
 
+from decimal import Decimal
+
 import pymupdf
 
 from extraction.features.extracted_borehole import ExtractedBorehole
@@ -14,13 +16,13 @@ from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 
-def _depth(value: float, page: int) -> LayerDepthsEntry:
-    return LayerDepthsEntry(value=value, rect=None, page_number=page)
+def _depth(value: Decimal, page_number: int) -> LayerDepthsEntry:
+    return LayerDepthsEntry(value=value, rect=None, page_number=page_number)
 
 
 def _name(text: str, confidence: float = 1.0) -> FeatureOnPage[BoreholeName]:
     return FeatureOnPage(
-        feature=BoreholeName(name=text, confidence=confidence), rect=pymupdf.Rect(0, 0, 10, 10), page=1
+        feature=BoreholeName(name=text, confidence=confidence), rect=pymupdf.Rect(0, 0, 10, 10), page_number=1
     )
 
 
@@ -33,7 +35,7 @@ def _page_bbox(page: int) -> PageBoundingBoxes:
     )
 
 
-def _layer(text: str, start: float | None, end: float | None, page: int) -> Layer:
+def _layer(text: str, start: Decimal | None, end: Decimal | None, page: int) -> Layer:
     return Layer(
         material_description=MaterialDescription(text=text, lines=[]),
         depths=LayerDepths(

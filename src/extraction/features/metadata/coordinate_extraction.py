@@ -8,6 +8,7 @@ from decimal import Decimal
 
 import pymupdf
 import regex
+from pydantic import model_serializer, model_validator
 
 from extraction.utils.json import JsonFloatDecimal
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
@@ -42,14 +43,42 @@ class Coordinate(ExtractedFeature):
     east: CoordinateEntry
     north: CoordinateEntry
 
-    def __post_init__(self):
+    @model_validator(mode="after")
+    def run_post_init(self):
         # east always greater than north by definition. Irrespective of the leading 1 or 2
         if self.east.coordinate_value < self.north.coordinate_value:
             logger.info("Swapping coordinates.")
             self.north, self.east = self.east, self.north
+        return self
 
     def __str__(self):
         return f"E: {self.east.coordinate_value}, N: {self.north.coordinate_value}"
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_flat_json(cls, data: dict) -> dict:
+        if isinstance(data, dict) and ("E" in data or "N" in data):
+            # 1. Extract "E" and "N" if present and nest them for Pydantic
+            # We mutate a copy or build upon the incoming dict to preserve other fields
+            data = data.copy()
+            data["east"] = {"coordinate_value": data.pop("E", None)}
+            data["north"] = {"coordinate_value": data.pop("N", None)}
+        return data
+
+    @model_serializer(mode="wrap")
+    def serialize_flat_json(self, handler) -> dict:
+        # 1. Let Pydantic serialize everything normally first
+        serialized_dict = handler(self)
+
+        # 2. Extract the standard nested objects
+        east_data = serialized_dict.pop("east", {})
+        north_data = serialized_dict.pop("north", {})
+
+        # 3. Flatten them into "E" and "N" while leaving other fields untouched
+        serialized_dict["E"] = east_data.get("coordinate_value")
+        serialized_dict["N"] = north_data.get("coordinate_value")
+
+        return serialized_dict
 
     @staticmethod
     def from_values(east: Decimal, north: Decimal, is_correct: bool | None = None) -> Coordinate | None:

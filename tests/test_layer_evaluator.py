@@ -1,5 +1,7 @@
 """Tests for the LayerEvaluator class."""
 
+from decimal import Decimal
+
 import pymupdf
 import pytest
 
@@ -11,14 +13,17 @@ from extraction.evaluation.layer_evaluator import (
     score_material_descriptions,
 )
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
-from swissgeol_doc_processing.text.textblock import MaterialDescription, MaterialDescriptionLine
+from swissgeol_doc_processing.text.textblock import MaterialDescription
 
 
-def create_test_layer(text: str, start: float, end: float) -> Layer:
+def create_test_layer(text: str, start: Decimal, end: Decimal) -> Layer:
     """Helper function to create a test layer."""
     return Layer(
-        MaterialDescription((text), [MaterialDescriptionLine(text)]),
-        LayerDepths(LayerDepthsEntry(start, pymupdf.Rect(), 0), LayerDepthsEntry(end, pymupdf.Rect(), 0)),
+        material_description=MaterialDescription(text=text, lines=[]),
+        depths=LayerDepths(
+            start=LayerDepthsEntry(value=start, rect=pymupdf.Rect(), page_number=0),
+            end=LayerDepthsEntry(value=end, rect=pymupdf.Rect(), page_number=0),
+        ),
     )
 
 

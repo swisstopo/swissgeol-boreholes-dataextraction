@@ -26,12 +26,12 @@ def test_strLV95():  # noqa: D103
 
 
 def test_to_jsonLV95():  # noqa: D103
-    """Test the to_json method of an LV95Coordinate object."""
+    """Test the JSON serialization of an LV95Coordinate object."""
     coord = LV95Coordinate(
         east=CoordinateEntry(coordinate_value=Decimal(2789456)),
         north=CoordinateEntry(coordinate_value=Decimal(1123012)),
     )
-    assert coord.to_json() == {"E": 2789456, "N": 1123012, "is_correct": None}
+    assert coord.model_dump() == {"E": 2789456, "N": 1123012, "is_correct": None}
 
 
 def test_swap_coordinates():  # noqa: D103
@@ -52,11 +52,11 @@ def test_strLV03():  # noqa: D103
 
 
 def test_to_jsonLV03():  # noqa: D103
-    """Test the to_json method of an LV03Coordinate object."""
+    """Test the JSON serialization of an LV03Coordinate object."""
     coord = LV03Coordinate(
         east=CoordinateEntry(coordinate_value=Decimal(789456)), north=CoordinateEntry(coordinate_value=Decimal(123012))
     )
-    assert coord.to_json() == {"E": 789456, "N": 123012, "is_correct": None}
+    assert coord.model_dump() == {"E": 789456, "N": 123012, "is_correct": None}
 
 
 doc = pymupdf.open(find_project_root() / "example" / "example_borehole_profile.pdf")
@@ -131,7 +131,7 @@ def test_CoordinateExtractor_get_coordinates_with_x_y_labels():  # noqa: D103
             "Y = 1'999'999",
         ]
     )
-    coordinates = extractor_de.get_coordinates_with_x_y_labels(lines, page=1)
+    coordinates = extractor_de.get_coordinates_with_x_y_labels(lines, page_number=1)
 
     # coordinates with explicit "X" and "Y" labels are found, even when they are further apart
     assert coordinates[0].feature.east.coordinate_value == Decimal(2600000)
@@ -149,23 +149,23 @@ def test_get_axis_aligned_lines():
     rect_key = pymupdf.Rect(x0=200, y0=200, x1=300, y1=250)
 
     # Key line
-    key_line = TextLine([TextWord(pymupdf.Rect(200, 200, 300, 400), "Linie1", page=1)])
+    key_line = TextLine([TextWord(pymupdf.Rect(200, 200, 300, 400), "Linie1", page_number=1)])
     # Inside horizontal range (right)
-    inside_right = TextLine([TextWord(pymupdf.Rect(310, 200, 410, 250), "Linie2", page=1)])
+    inside_right = TextLine([TextWord(pymupdf.Rect(310, 200, 410, 250), "Linie2", page_number=1)])
     # Inside vertical range (below)
-    inside_below = TextLine([TextWord(pymupdf.Rect(200, 260, 300, 310), "Linie3", page=1)])
+    inside_below = TextLine([TextWord(pymupdf.Rect(200, 260, 300, 310), "Linie3", page_number=1)])
     # Outside vertical and horizontal range (above)
-    outside_above = TextLine([TextWord(pymupdf.Rect(200, 140, 300, 190), "Linie4", page=1)])
+    outside_above = TextLine([TextWord(pymupdf.Rect(200, 140, 300, 190), "Linie4", page_number=1)])
     # Completely outside both ranges (diagonal)
-    outside_diagonal = TextLine([TextWord(pymupdf.Rect(310, 260, 410, 310), "Linie5", page=1)])
+    outside_diagonal = TextLine([TextWord(pymupdf.Rect(310, 260, 410, 310), "Linie5", page_number=1)])
     # Edge case: exactly on horizontal limit
-    boundary_left = TextLine([TextWord(pymupdf.Rect(100, 200, 200, 250), "Linie6", page=1)])
+    boundary_left = TextLine([TextWord(pymupdf.Rect(100, 200, 200, 250), "Linie6", page_number=1)])
     # Edge case: exactly on edge of horizontal limit and vertical limit
-    boundary_edge_above = TextLine([TextWord(pymupdf.Rect(300, 250, 400, 300), "Linie7", page=1)])
+    boundary_edge_above = TextLine([TextWord(pymupdf.Rect(300, 250, 400, 300), "Linie7", page_number=1)])
     # # Inside vertical limit, overlap with horizontal limit
-    overlap_right = TextLine([TextWord(pymupdf.Rect(250, 200, 350, 250), "Linie8", page=1)])
+    overlap_right = TextLine([TextWord(pymupdf.Rect(250, 200, 350, 250), "Linie8", page_number=1)])
     # # Overlap with vertical and horizontal limit
-    overlap_right_below = TextLine([TextWord(pymupdf.Rect(250, 225, 350, 275), "Linie9", page=1)])
+    overlap_right_below = TextLine([TextWord(pymupdf.Rect(250, 225, 350, 275), "Linie9", page_number=1)])
 
     text_lines = [
         key_line,

@@ -14,11 +14,11 @@ from swissgeol_doc_processing.text.textline import TextLine, TextWord
 def test_atobintervalextractor_fromtext():  # noqa: D103
     """Test the from_text class-method of the AToBIntervalExtractor class."""
     words = [
-        TextWord(pymupdf.Rect(0, 0, 2, 1), "COLLUVIONS:", page=1),
-        TextWord(pymupdf.Rect(2, 0, 3, 1), "1,70", page=1),
-        TextWord(pymupdf.Rect(3, 0, 4, 1), "-", page=1),
-        TextWord(pymupdf.Rect(4, 0, 5, 1), "5,80", page=1),
-        TextWord(pymupdf.Rect(5, 0, 6, 1), "m", page=1),
+        TextWord(pymupdf.Rect(0, 0, 2, 1), "COLLUVIONS:", page_number=1),
+        TextWord(pymupdf.Rect(2, 0, 3, 1), "1,70", page_number=1),
+        TextWord(pymupdf.Rect(3, 0, 4, 1), "-", page_number=1),
+        TextWord(pymupdf.Rect(4, 0, 5, 1), "5,80", page_number=1),
+        TextWord(pymupdf.Rect(5, 0, 6, 1), "m", page_number=1),
     ]
     interval, _ = AToBIntervalExtractor.from_text(TextLine(words), require_start_of_string=False)
     assert interval.start.value == Decimal("1.70"), "The start value of the interval should be 1.70m"
@@ -27,8 +27,8 @@ def test_atobintervalextractor_fromtext():  # noqa: D103
     assert interval.end.rect == pymupdf.Rect(4, 0, 5, 1), "The end rect of the interval should be correct"
 
     words = [
-        TextWord(pymupdf.Rect(0, 0, 2, 1), "COLLUVIONS:", page=1),
-        TextWord(pymupdf.Rect(2, 0, 6, 1), "1,70-5,80m", page=1),
+        TextWord(pymupdf.Rect(0, 0, 2, 1), "COLLUVIONS:", page_number=1),
+        TextWord(pymupdf.Rect(2, 0, 6, 1), "1,70-5,80m", page_number=1),
     ]
     interval, _ = AToBIntervalExtractor.from_text(TextLine(words), require_start_of_string=False)
     assert interval.start.value == Decimal("1.70"), "The start value of the interval should be 1.70m"
@@ -37,22 +37,22 @@ def test_atobintervalextractor_fromtext():  # noqa: D103
     assert interval.end.rect == pymupdf.Rect(2, 0, 6, 1), "The end rect of the interval should be correct"
 
     words = [
-        TextWord(pymupdf.Rect(0, 0, 2, 1), "COLLUVIONS:", page=1),
-        TextWord(pymupdf.Rect(2, 0, 6, 1), "1,70-5,80m", page=1),
+        TextWord(pymupdf.Rect(0, 0, 2, 1), "COLLUVIONS:", page_number=1),
+        TextWord(pymupdf.Rect(2, 0, 6, 1), "1,70-5,80m", page_number=1),
     ]
     interval, _ = AToBIntervalExtractor.from_text(TextLine(words), require_start_of_string=True)
     assert interval is None, "With require_start_of_string=True, matches that are not at the start are not allowed."
 
     words = [
-        TextWord(pymupdf.Rect(0, 0, 4, 1), "1,70-5,80m:", page=1),
-        TextWord(pymupdf.Rect(4, 0, 6, 1), "COLLUVIONS", page=1),
+        TextWord(pymupdf.Rect(0, 0, 4, 1), "1,70-5,80m:", page_number=1),
+        TextWord(pymupdf.Rect(4, 0, 6, 1), "COLLUVIONS", page_number=1),
     ]
     interval, _ = AToBIntervalExtractor.from_text(TextLine(words), require_start_of_string=False)
     assert interval is not None, "With require_start_of_string=False, matches that are at the start are allowed."
 
     words = [
-        TextWord(pymupdf.Rect(0, 0, 4, 1), "Argile", page=1),
-        TextWord(pymupdf.Rect(4, 0, 6, 1), "dès 4m.", page=1),
+        TextWord(pymupdf.Rect(0, 0, 4, 1), "Argile", page_number=1),
+        TextWord(pymupdf.Rect(4, 0, 6, 1), "dès 4m.", page_number=1),
     ]
     interval, _ = AToBIntervalExtractor.from_text(TextLine(words), require_start_of_string=False)
     assert interval is not None and interval.end is None, "Open-ended intervals are allowed."
@@ -63,7 +63,7 @@ def create_line():
     """Fixture providing a function to create TextBlock with given text and position."""
 
     def _create_line(text: str) -> TextLine:
-        words = [TextWord(pymupdf.Rect(i, 0, i + 1, 1), w, page=1) for i, w in enumerate(text.split())]
+        words = [TextWord(pymupdf.Rect(i, 0, i + 1, 1), w, page_number=1) for i, w in enumerate(text.split())]
         return TextLine(words)
 
     return _create_line

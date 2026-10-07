@@ -20,7 +20,7 @@ from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 def _gw(depth=None, date_=None, elevation=None, rect=(0, 0, 1, 1), page=1) -> FeatureOnPage:
     return FeatureOnPage(
-        feature=Groundwater(depth=depth, date=date_, elevation=elevation), rect=pymupdf.Rect(*rect), page=page
+        feature=Groundwater(depth=depth, date=date_, elevation=elevation), rect=pymupdf.Rect(*rect), page_number=page
     )
 
 
@@ -57,9 +57,9 @@ def groundtruth():
 def groundwater_at_2m22() -> FeatureOnPage[Groundwater]:
     """Fixture that returns a Groundwater object (embeded in a FeatureOnPage)."""
     return FeatureOnPage(
-        Groundwater(depth=Decimal("2.22"), date=date(2016, 4, 18), elevation=Decimal("448.07")),
+        feature=Groundwater(depth=Decimal("2.22"), date=date(2016, 4, 18), elevation=Decimal("448.07")),
         rect=pymupdf.Rect(0, 0, 100, 100),
-        page=1,
+        page_number=1,
     )
 
 
@@ -67,9 +67,9 @@ def groundwater_at_2m22() -> FeatureOnPage[Groundwater]:
 def groundwater_at_3m22() -> FeatureOnPage[Groundwater]:
     """Fixture that returns another Groundwater object (embeded in a FeatureOnPage)."""
     return FeatureOnPage(
-        Groundwater(depth=Decimal("3.22"), date=date(2016, 4, 20), elevation=Decimal("447.07")),
+        feature=Groundwater(depth=Decimal("3.22"), date=date(2016, 4, 20), elevation=Decimal("447.07")),
         rect=pymupdf.Rect(0, 0, 100, 100),
-        page=1,
+        page_number=1,
     )
 
 

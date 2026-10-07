@@ -118,7 +118,12 @@ def extract(
         pages_data = []
 
         if part != "all":
-            return ExtractionResult(predictions=FilePredictions([], file_metadata, filename), pages_data=[])
+            return ExtractionResult(
+                predictions=FilePredictions(
+                    borehole_predictions_list=[], file_metadata=file_metadata, file_name=filename
+                ),
+                pages_data=[],
+            )
 
         # Extract the Flayers
         for page_index, page in enumerate(doc):

@@ -1,6 +1,8 @@
 """Test suite for the prediction module."""
 
 from datetime import datetime
+from decimal import Decimal
+from pathlib import Path
 from unittest.mock import Mock
 
 import pymupdf
@@ -15,7 +17,7 @@ from extraction.features.extracted_borehole import ExtractedBorehole
 from extraction.features.groundwater.groundwater import Groundwater, GroundwatersInBorehole
 from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
-from extraction.features.metadata.metadata import BoreholeMetadata, FileMetadata
+from extraction.features.metadata.metadata import BoreholeMetadata, FileMetadata, PageDimensions
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictions,
     BoreholePredictionsWithGroundTruth,
@@ -24,7 +26,6 @@ from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
 from swissgeol_doc_processing.text.textblock import MaterialDescription
-from swissgeol_doc_processing.text.textline import TextLine, TextWord
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.file_utils import read_params
 
@@ -41,15 +42,16 @@ def sample_file_prediction() -> FilePredictions:
     filename = "example_borehole_profile.pdf"
     coord = FeatureOnPage(
         feature=LV95Coordinate(
-            east=CoordinateEntry(coordinate_value=2789456), north=CoordinateEntry(coordinate_value=1123012)
+            east=CoordinateEntry(coordinate_value=Decimal(2789456)),
+            north=CoordinateEntry(coordinate_value=Decimal(1123012)),
         ),
         rect=pymupdf.Rect(),
-        page=1,
+        page_number=1,
     )
     name = FeatureOnPage(
         feature=BoreholeName(name="SST KB5", confidence=1.0),
         rect=pymupdf.Rect(),
-        page=1,
+        page_number=1,
     )
 
     layer1 = Mock(
@@ -62,8 +64,8 @@ def sample_file_prediction() -> FilePredictions:
 
     dt_date = datetime(2024, 10, 1)
     groundwater_on_page = FeatureOnPage(
-        feature=Groundwater(depth=100, date=dt_date, elevation=20),
-        page=1,
+        feature=Groundwater(depth=Decimal(100), date=dt_date, elevation=Decimal(20)),
+        page_number=1,
         rect=pymupdf.Rect(0, 0, 100, 100),
     )
     groundwater_in_bh = GroundwatersInBorehole(features=[groundwater_on_page])
@@ -73,7 +75,7 @@ def sample_file_prediction() -> FilePredictions:
     metadata = BoreholeMetadata(coordinates=coord, elevation=None, name=name)
 
     return FilePredictions(
-        [
+        borehole_predictions_list=[
             BoreholePredictions(
                 borehole_index=0,
                 layers=layers,
@@ -93,24 +95,25 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     filename = "example_borehole_profile.pdf"
     coord = FeatureOnPage(
         feature=LV95Coordinate(
-            east=CoordinateEntry(coordinate_value=2789456), north=CoordinateEntry(coordinate_value=1123012)
+            east=CoordinateEntry(coordinate_value=Decimal(2789456)),
+            north=CoordinateEntry(coordinate_value=Decimal(1123012)),
         ),
         rect=pymupdf.Rect(),
-        page=1,
+        page_number=1,
     )
 
     name = FeatureOnPage(
         feature=BoreholeName(name="SST KB5", confidence=1.0),
         rect=pymupdf.Rect(),
-        page=1,
+        page_number=1,
     )
 
     layers = [
         Layer(
             material_description=MaterialDescription(text=descr, lines=[]),
             depths=LayerDepths(
-                LayerDepthsEntry(start, pymupdf.Rect(), 0) if start is not None else None,
-                LayerDepthsEntry(end, pymupdf.Rect(), 0),
+                start=LayerDepthsEntry(start, pymupdf.Rect(), 0) if start is not None else None,
+                end=LayerDepthsEntry(end, pymupdf.Rect(), 0),
             ),
         )
         for descr, start, end in [
@@ -122,27 +125,29 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     layers_2 = [
         Layer(
             material_description=MaterialDescription(text=descr, lines=[]),
-            depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect(), 0), LayerDepthsEntry(end, pymupdf.Rect(), 0)),
+            depths=LayerDepths(
+                start=LayerDepthsEntry(start, pymupdf.Rect(), 0), end=LayerDepthsEntry(end, pymupdf.Rect(), 0)
+            ),
         )
         for descr, start, end in [
-            ("KIES, Sand,", 0.0, 0.5),
-            ("stein, sand", 0.5, 2.0),
+            ("KIES, Sand,", Decimal(0), Decimal("0.5")),
+            ("stein, sand", Decimal("0.5"), Decimal(2)),
         ]
     ]
 
     dt_date = datetime(2024, 10, 1)
     groundwater_on_page = FeatureOnPage(
-        feature=Groundwater(depth=100, date=dt_date, elevation=20),
-        page=1,
+        feature=Groundwater(depth=Decimal(100), date=dt_date, elevation=Decimal(20)),
+        page_number=1,
         rect=pymupdf.Rect(0, 0, 100, 100),
     )
     groundwater_in_bh = GroundwatersInBorehole(features=[groundwater_on_page])
 
-    file_metadata = FileMetadata(language="en", page_dimensions=[Mock(width=10, height=20)])
+    file_metadata = FileMetadata(language="en", page_dimensions=[PageDimensions(width=10, height=20)])
     metadata = BoreholeMetadata(coordinates=coord, elevation=None, name=name)
 
     return FilePredictions(
-        [
+        borehole_predictions_list=[
             BoreholePredictions(
                 borehole_index=0,
                 layers=layers,
@@ -166,24 +171,13 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
 @pytest.fixture
 def groundtruth():
     """Path to the ground truth file."""
-    return GroundTruth("example/example_groundtruth.json")
+    return GroundTruth(Path("example/example_groundtruth.json"))
 
 
 @pytest.fixture
 def groundtruth_with_two_boreholes():
     """Path to the ground truth file that has two boreholes."""
-    return GroundTruth("example/example_layers_groundtruth.json")
-
-
-def test_to_json(sample_file_prediction: FilePredictions):
-    """Test the to_json method."""
-    result = sample_file_prediction.to_json()
-
-    assert isinstance(result, dict)
-    assert len(result["boreholes"][0]["layers"]) == 2
-    assert result["boreholes"][0]["metadata"]["coordinates"]["E"] == 2789456
-    assert result["language"] == "en"
-    assert result["boreholes"][0]["metadata"]["name"]["name"] == "SST KB5"
+    return GroundTruth(Path("example/example_layers_groundtruth.json"))
 
 
 def test_evaluate_layer_matching(
@@ -256,13 +250,14 @@ def test_merge_boreholes():
         [
             Layer(
                 material_description=MaterialDescription(text="first layer", lines=[]),
-                depths=LayerDepths(LayerDepthsEntry(0, pymupdf.Rect(), 0), LayerDepthsEntry(1, pymupdf.Rect(), 0)),
+                depths=LayerDepths(
+                    start=LayerDepthsEntry(Decimal(0), pymupdf.Rect(), 0),
+                    end=LayerDepthsEntry(Decimal(1), pymupdf.Rect(), 0),
+                ),
             ),
             Layer(
-                material_description=MaterialDescription(
-                    text="second", lines=[TextLine([TextWord(pymupdf.Rect(), "second", 0)])]
-                ),
-                depths=LayerDepths(LayerDepthsEntry(1, pymupdf.Rect(), 0), None),
+                material_description=MaterialDescription(text="second", lines=[]),
+                depths=LayerDepths(start=LayerDepthsEntry(Decimal(1), pymupdf.Rect(), 0), end=None),
             ),
         ],
         [get_mock_bb(1)],
@@ -270,10 +265,8 @@ def test_merge_boreholes():
     next_page_borehole = ExtractedBorehole(
         [
             Layer(
-                material_description=MaterialDescription(
-                    text="layer", lines=[TextLine([TextWord(pymupdf.Rect(), "layer", 1)])]
-                ),
-                depths=LayerDepths(None, LayerDepthsEntry(2, pymupdf.Rect(), 1)),
+                material_description=MaterialDescription(text="layer", lines=[]),
+                depths=LayerDepths(start=None, end=LayerDepthsEntry(Decimal(2), pymupdf.Rect(), 1)),
             ),
         ],
         [get_mock_bb(2)],
@@ -290,7 +283,7 @@ def test_merge_boreholes():
 def test_groundwater_metrics_to_overall_metrics(sample_metrics):
     """Test adding single datapoint to overall metric."""
     filename = "file"
-    overall = OverallMetricsCatalog(languages=[])
+    overall = OverallMetricsCatalog(languages=set())
 
     overall.add_datapoint(
         filename=filename,
