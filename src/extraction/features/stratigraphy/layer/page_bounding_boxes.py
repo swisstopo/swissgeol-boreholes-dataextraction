@@ -17,31 +17,6 @@ class PageBoundingBoxes:
     material_description_bbox: BoundingBox
     page: int
 
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "sidebar_rect": self.sidebar_bbox.to_json() if self.sidebar_bbox else None,
-            "depth_column_entries": [entry.to_json() for entry in self.depth_column_entry_bboxes],
-            "material_description_rect": self.material_description_bbox.to_json(),
-            "page": self.page,
-        }
-
-    @classmethod
-    def from_json(cls, data) -> "PageBoundingBoxes":
-        """Convert a JSON data structure to a BoundingBoxes object."""
-        return cls(
-            sidebar_bbox=BoundingBox.from_json(data["sidebar_rect"])
-            if "sidebar_rect" in data and data["sidebar_rect"]
-            else None,
-            depth_column_entry_bboxes=[BoundingBox.from_json(entry) for entry in data["depth_column_entries"]],
-            material_description_bbox=BoundingBox.from_json(data["material_description_rect"]),
-            page=data["page"],
-        )
-
     @classmethod
     def from_sidebar_and_rect(
         cls, sidebar: Sidebar | None, material_description_rect: pymupdf.Rect, page_number: int

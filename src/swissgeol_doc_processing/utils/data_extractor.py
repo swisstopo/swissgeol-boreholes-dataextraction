@@ -4,92 +4,36 @@ This module defines the DataExtractor class for extracting data from stratigraph
 """
 
 import logging
-from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass
-from typing import Generic, Self, TypeVar
+from typing import Generic, TypeVar
 
 import pymupdf
 import regex
+from pydantic import BaseModel
 
-from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
+from extraction.utils.json import JsonSerializableRect
 from swissgeol_doc_processing.text.textline import TextLine
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass(kw_only=True)
-class ExtractedFeature(metaclass=ABCMeta):
+class ExtractedFeature(BaseModel):
     """Class for extracted feature information."""
 
     is_correct: bool | None = None
-
-    @abstractmethod
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        pass
-
-    @classmethod
-    @abstractmethod
-    def from_json(cls, data: dict) -> Self:
-        """Converts a dictionary to an object.
-
-        Args:
-            data (dict): A dictionary representing the information.
-
-        Returns:
-            Self: An instance of the class.
-        """
-        pass
 
 
 T = TypeVar("T", bound=ExtractedFeature)
 
 
-class FeatureOnPage(Generic[T], RectWithPageMixin):
+class FeatureOnPage(BaseModel, Generic[T]):
     """Class for an extracted feature, together with the page and where on that page the feature was extracted from."""
 
-    def __init__(self, feature: T, rect: pymupdf.Rect, page: int):
-        self.feature = feature
-        self.rect_with_page = RectWithPage(rect, page)
+    feature: T
+    rect: JsonSerializableRect
+    page_number: int
 
     def __repr__(self):
         return f"{self.feature}"
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        result = self.feature.to_json()
-        result.update(
-            {
-                "page": self.page_number if self.page_number else None,
-                "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
-            }
-        )
-        return result
-
-    @classmethod
-    def from_json(cls, data: dict, feature_cls: type[T]) -> Self:
-        """Converts a dictionary to an object.
-
-        Args:
-            data (dict): A dictionary representing the feature on a page information.
-            feature_cls (T): The extracted feature
-
-        Returns:
-            Self: The resulting FeatureOnPage object.
-        """
-        return cls(
-            feature=feature_cls.from_json(data),
-            page=data["page"],
-            rect=pymupdf.Rect(data["rect"]),
-        )
 
 
 class DataExtractor:

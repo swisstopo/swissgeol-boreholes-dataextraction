@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
-from typing import Protocol
 
 import numpy as np
 import pymupdf
 from numpy.typing import ArrayLike
+
+from extraction.utils.json import JsonSerializableRect
 
 logger = logging.getLogger(__name__)
 
@@ -203,24 +204,7 @@ class Line:
 class BoundingBox:
     """A single bounding box, JSON serializable."""
 
-    rect: pymupdf.Rect
-
-    def to_json(self) -> list[int]:
-        """Converts the object to a dictionary.
-
-        Returns:
-            list[int]: The object as a list.
-        """
-        return [
-            self.rect.x0,
-            self.rect.y0,
-            self.rect.x1,
-            self.rect.y1,
-        ]
-
-    @classmethod
-    def from_json(cls, data) -> BoundingBox:
-        return cls(rect=pymupdf.Rect(data))
+    rect: JsonSerializableRect
 
 
 @dataclass
@@ -229,24 +213,6 @@ class RectWithPage:
 
     rect: pymupdf.Rect | None
     page_number: int
-
-
-class SupportsRectWithPage(Protocol):
-    """Protocol to ensure that a class has a rect_with_page attribute."""
-
-    rect_with_page: RectWithPage
-
-
-class RectWithPageMixin:
-    """Mixin class to facilitate the access to the rect and page_number of a SupportsRectWithPage object."""
-
-    @property
-    def rect(self: SupportsRectWithPage):
-        return self.rect_with_page.rect
-
-    @property
-    def page_number(self: SupportsRectWithPage):
-        return self.rect_with_page.page_number
 
 
 @dataclass

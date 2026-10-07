@@ -2,22 +2,21 @@
 
 from __future__ import annotations
 
-import abc
+from dataclasses import dataclass
 from typing import Generic, TypeVar
 
-import pymupdf
-
-from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
+from pymupdf import pymupdf
 
 ValueT = TypeVar("ValueT")
 
 
-class SidebarEntry(abc.ABC, Generic[ValueT], RectWithPageMixin):
+@dataclass(frozen=True)
+class SidebarEntry(Generic[ValueT]):
     """Abstract class for sidebar entries (e.g. DepthColumnEntry or LayerIdentifierEntry)."""
 
-    def __init__(self, value: ValueT, rect: pymupdf.Rect, page_number: int):
-        self.value = value
-        self.rect_with_page = RectWithPage(rect, page_number)
+    value: ValueT
+    rect: pymupdf.Rect
+    page_number: int
 
 
 class LayerIdentifierEntry(SidebarEntry[str]):

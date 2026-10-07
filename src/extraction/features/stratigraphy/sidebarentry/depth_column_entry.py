@@ -5,9 +5,10 @@ from decimal import Decimal
 import pymupdf
 
 from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SidebarEntry
+from extraction.utils.json import JsonFloatDecimal
 
 
-class DepthColumnEntry(SidebarEntry[Decimal]):
+class DepthColumnEntry(SidebarEntry[JsonFloatDecimal]):
     """Represents a depth value extracted from the document.
 
     DepthColumnEntry are used during the extraction process to hold depth data, which will later be part Intervals
@@ -15,9 +16,7 @@ class DepthColumnEntry(SidebarEntry[Decimal]):
     of the core extraction logic, and is the building block for larger object like Sidebars.
     """
 
-    def __init__(self, value: Decimal, rect: pymupdf.Rect, page_number: int):
-        super().__init__(value, rect, page_number)
-        self.relative_shift = 0.0
+    relative_shift: float = 0.0
 
     def __repr__(self) -> str:
         return str(self.value)

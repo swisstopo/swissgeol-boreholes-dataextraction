@@ -46,13 +46,6 @@ def common_options(f):
         help="Path to the predictions file.",
     )(f)
     f = click.option(
-        "-m",
-        "--metadata-path",
-        type=click.Path(path_type=Path),
-        default=get_data_path() / "output" / "metadata.json",
-        help="Path to the metadata file.",
-    )(f)
-    f = click.option(
         "-s",
         "--skip-draw-predictions",
         is_flag=True,
@@ -121,7 +114,6 @@ def click_pipeline(
     ground_truth_path: Path | None,
     out_directory: Path,
     predictions_path: Path,
-    metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
     draw_tables: bool = False,
@@ -165,7 +157,6 @@ def click_pipeline(
             input_directory=input_directory,
             ground_truth_path=ground_truth_path,
             out_directory=out_directory,
-            metadata_path=metadata_path,
             options=ExtractionOptions(matching_analytics=matching_analytics, part=part),
             on_file_done=factory.on_file_done,
         ).execute()
@@ -178,7 +169,6 @@ def click_pipeline_metadata(
     ground_truth_path: Path | None,
     out_directory: Path,
     predictions_path: Path,
-    metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
     draw_tables: bool = False,
@@ -201,7 +191,6 @@ def click_pipeline_metadata(
         input_directory=input_directory,
         ground_truth_path=ground_truth_path,
         out_directory=out_directory,
-        metadata_path=metadata_path,
         options=ExtractionOptions(matching_analytics=matching_analytics, part="metadata"),
         on_file_done=factory.on_file_done,
     ).execute()

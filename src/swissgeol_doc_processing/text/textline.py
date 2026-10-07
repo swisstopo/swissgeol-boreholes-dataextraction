@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 import pymupdf
 
-from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
 from swissgeol_doc_processing.text.stemmer import find_matching_expressions
 
 
-class TextWord(RectWithPageMixin):
+@dataclass
+class TextWord:
     """Class to represent a word on a specific location on a PDF page.
 
     A TextWord object consists of a pymupdf Rectangle object and a string.
@@ -19,16 +20,16 @@ class TextWord(RectWithPageMixin):
     to represent the location of the word in a PDF document.
     """
 
-    def __init__(self, rect: pymupdf.Rect, text: str, page: int, color: int | None = None):
-        self.rect_with_page = RectWithPage(rect, page)
-        self.text = text
-        self.color = color
+    rect: pymupdf.Rect
+    text: str
+    page_number: int
+    color: int | None = None
 
     def __repr__(self) -> str:
         return f"TextWord({self.rect}, {self.text})"
 
 
-class TextLine(RectWithPageMixin):
+class TextLine:
     """Class to represent TextLine objects.
 
     A TextLine object is a collection of TextWord objects.
@@ -45,7 +46,8 @@ class TextLine(RectWithPageMixin):
         rect = pymupdf.Rect()
         for word in words:
             rect.include_rect(word.rect)
-        self.rect_with_page = RectWithPage(rect, next((word.page_number for word in words), None))
+        self.rect = rect
+        self.page_number = next((word.page_number for word in words), None)
         self.words = words
         self.text_angle = text_angle
         self.is_indented = False

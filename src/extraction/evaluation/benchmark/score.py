@@ -73,7 +73,12 @@ def evaluate_prediction(
 
         # Set GT language and aggregate metrics into a single entity
         metrics = FilePredictionsMetrics(
-            matched_with_gt.language, layer_metrics, depth_metrics, material_metrics, gw_metrics, metadata_metrics
+            language=matched_with_gt.language,
+            layer_metrics=layer_metrics,
+            depth_interval_metrics=depth_metrics,
+            material_description_metrics=material_metrics,
+            gw_metrics=gw_metrics,
+            metadata_metrics=metadata_metrics,
         )
 
     return FilePredictionsWithMetrics(

@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeVar
 
+from pydantic import ValidationError
 from tqdm import tqdm
 
 from core.ground_truth import GroundTruth
@@ -42,7 +43,7 @@ def write_json_predictions(path: Path, predictions: OverallFilePredictions) -> N
         predictions (OverallFilePredictions): Prediction to dump in JSON file.
     """
     with open(path, "w", encoding="utf8") as file:
-        json.dump(predictions.to_json(), file, ensure_ascii=False, indent=2)
+        file.write(predictions.model_dump_json(indent=2, by_alias=True))
 
 
 def read_json_predictions(path: Path) -> OverallFilePredictions:
@@ -60,8 +61,8 @@ def read_json_predictions(path: Path) -> OverallFilePredictions:
         return OverallFilePredictions()
     try:
         with open(path, encoding="utf8") as f:
-            return OverallFilePredictions.from_json(json.load(f))
-    except json.JSONDecodeError:
+            return OverallFilePredictions.model_validate(f)
+    except ValidationError:
         logger.warning(f"Unable to load prediction from file {path}")
         return OverallFilePredictions()
 
@@ -81,7 +82,6 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     input_directory: Path
     ground_truth_path: Path | None
     out_directory: Path
-    metadata_path: Path
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
     on_file_done: Callable[[ExtractionResult, Path, Path], None] | None = None
     runname: str | None = None
@@ -92,7 +92,6 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
         self.analytics = create_analytics() if self.options.matching_analytics else None
         self.copy_predictions_to_final = self.options.part == "all"
         self.out_directory.mkdir(parents=True, exist_ok=True)
-        self.metadata_path.parent.mkdir(parents=True, exist_ok=True)
 
     def setup_mlflow_run(self, runid: str | None) -> str:
         return setup_mlflow_tracking(
@@ -105,7 +104,6 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
                 "ground_truth_path": self.ground_truth_path,
                 "out_directory": self.out_directory,
                 "predictions_path": self.predictions_path,
-                "metadata_path": self.metadata_path,
             },
             params={
                 **flatten(line_detection_params),
@@ -178,10 +176,6 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     ) -> None:
         if mlflow and summary is not None:
             log_metric_mlflow(summary, out_dir=self.out_directory)
-
-        logger.info(f"Metadata written to {self.metadata_path}")
-        with open(self.metadata_path, "w", encoding="utf8") as file:
-            json.dump(run_result.result.get_metadata_as_dict(), file, ensure_ascii=False, indent=2)
 
         self._log_per_borehole_predictions(
             run_result,
@@ -264,7 +258,6 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
             input_directory=spec.input_path,
             ground_truth_path=spec.ground_truth_path,
             out_directory=bench_out,
-            metadata_path=bench_out / "metadata.json",
             options=self.options,
             on_file_done=self.on_file_done,
             runname=spec.name,

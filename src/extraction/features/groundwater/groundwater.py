@@ -11,6 +11,7 @@ import pymupdf
 from scipy.stats import pearsonr
 
 from extraction.features.stratigraphy.layer.layer import Layer
+from extraction.utils.json import JsonFloatDecimal
 from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature, FeatureOnPage
 
 DATE_FORMAT = "%Y-%m-%d"
@@ -18,11 +19,10 @@ DATE_FORMAT = "%Y-%m-%d"
 logger = logging.getLogger(__name__)
 
 
-@dataclass
 class Groundwater(ExtractedFeature):
     """Abstract class for Groundwater Information."""
 
-    depth: Decimal | None  # Depth of the groundwater relative to the surface
+    depth: JsonFloatDecimal | None  # Depth of the groundwater relative to the surface
     date: datetime.date | None = (
         None  # Date of the groundwater measurement, if several dates
         # are present, the date of the document the last measurement is taken
@@ -58,23 +58,6 @@ class Groundwater(ExtractedFeature):
         date = date.replace(year=date.year - 100) if date > datetime.datetime.now().date() else date
         return cls(depth=depth, date=date, elevation=elevation, is_correct=is_correct)
 
-    @classmethod
-    def from_json(cls, json: dict) -> "Groundwater":
-        """Converts a dictionary to an object.
-
-        Args:
-            json (dict): A dictionary representing the groundwater information.
-
-        Returns:
-            Groundwater: The groundwater information object.
-        """
-        return cls.from_json_values(
-            depth=json["depth"],
-            date=json["date"],
-            elevation=json["elevation"],
-            is_correct=json.get("is_correct"),
-        )
-
     def format_date(self) -> str | None:
         """Formats the date of the groundwater measurement.
 
@@ -85,19 +68,6 @@ class Groundwater(ExtractedFeature):
             return self.date.strftime(DATE_FORMAT)
         else:
             return None
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "date": self.format_date(),
-            "depth": float(self.depth) if self.depth is not None else None,
-            "elevation": float(self.elevation) if self.elevation is not None else None,
-            "is_correct": self.is_correct,
-        }
 
     def infer_infos(self, terrain_elevation: Decimal | None, layers: list[Layer], feature_rect: pymupdf.Rect):
         """Sets the depth or elevation of the groundwater, knowing one and the terrain elevation.
@@ -143,7 +113,7 @@ class Groundwater(ExtractedFeature):
         depths = np.array(
             sorted(
                 {
-                    (d.value, (d.rect.y0 + d.rect.y1) / 2)
+                    (float(d.value), (d.rect.y0 + d.rect.y1) / 2)
                     for layer in layers
                     if layer.depths is not None
                     for d in (layer.depths.start, layer.depths.end)
@@ -186,34 +156,6 @@ class GroundwatersInBorehole:
 
     features: list[FeatureOnPage[Groundwater]] = field(default_factory=list)
 
-    def to_json(self) -> list[dict]:
-        """Converts the object to a list of dictionaries.
-
-        Returns:
-            list[dict]: The object as a list of dictionaries.
-        """
-        sorted_entries = sorted(
-            self.features,
-            key=lambda e: (
-                e.feature.depth or 0,
-                e.feature.date or datetime.date.min,
-                e.feature.elevation or 0,
-            ),
-        )
-        return [entry.to_json() for entry in sorted_entries]
-
-    @classmethod
-    def from_json(cls, json_object: list[dict]) -> "GroundwatersInBorehole":
-        """Extract a GroundwatersInBorehole object from a json dictionary.
-
-        Args:
-            json_object (list[dict]): the json object containing the information of the borehole
-
-        Returns:
-            GroundwatersInBorehole: the GroundwatersInBorehole object
-        """
-        return cls([FeatureOnPage.from_json(gw_data, Groundwater) for gw_data in json_object])
-
     def merge_compatible_candidates(self):
         """Merges candidates that likely describe the same groundwater reading.
 
@@ -244,7 +186,7 @@ class GroundwatersInBorehole:
                 for attribute in ("depth", "date", "elevation"):
                     if getattr(target.feature, attribute) is None:
                         setattr(target.feature, attribute, getattr(other.feature, attribute))
-                target.rect_with_page.rect |= other.rect
+                target.rect |= other.rect
 
         def merge_page(candidates: list[FeatureOnPage[Groundwater]]) -> list[FeatureOnPage[Groundwater]]:
             result = list(candidates)

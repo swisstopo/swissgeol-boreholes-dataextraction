@@ -7,13 +7,12 @@ descriptions.
 """
 
 import logging
-from dataclasses import dataclass
-from decimal import Decimal
 
 import numpy as np
 import pymupdf
 
 from extraction.features.groundwater.utility import extract_elevation
+from extraction.utils.json import JsonFloatDecimal
 from swissgeol_doc_processing.text.extract_text import extract_text_lines_from_bbox
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.utils.data_extractor import (
@@ -25,11 +24,10 @@ from swissgeol_doc_processing.utils.data_extractor import (
 logger = logging.getLogger(__name__)
 
 
-@dataclass
 class Elevation(ExtractedFeature):
-    """Abstract class for Elevation Information."""
+    """Class for elevation information."""
 
-    elevation: Decimal  # Elevation relative to the mean sea level
+    elevation: JsonFloatDecimal  # Elevation relative to the mean sea level
 
     def is_valid(self) -> bool:
         """Checks if the information is valid.
@@ -46,29 +44,6 @@ class Elevation(ExtractedFeature):
             str: The object as a string.
         """
         return f"Elevation(elevation={self.elevation})"
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "elevation": float(self.elevation),
-            "is_correct": self.is_correct,
-        }
-
-    @classmethod
-    def from_json(cls, data: dict) -> "Elevation":
-        """Converts a dictionary to an object.
-
-        Args:
-            data (dict): A dictionary representing the elevation information.
-
-        Returns:
-            Elevation: The elevation information object.
-        """
-        return cls(elevation=Decimal(data["elevation"]), is_correct=data.get("is_correct"))
 
 
 class ElevationExtractor(DataExtractor):
@@ -91,14 +66,14 @@ class ElevationExtractor(DataExtractor):
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ate": "ote"}
 
-    def get_elevation_near_key(self, lines: list[TextLine], page: int) -> list[FeatureOnPage[Elevation]]:
+    def get_elevation_near_key(self, lines: list[TextLine], page_number: int) -> list[FeatureOnPage[Elevation]]:
         """Find elevation from text lines that are close to an explicit "elevation" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
 
         Args:
             lines (list[TextLine]): all the lines of text to search in
-            page (int): the page number (1-based) of the PDF document
+            page_number (int): the page number (1-based) of the PDF document
 
         Returns:
             list[FeatureOnPage[Elevation]]: the found elevation
@@ -111,7 +86,7 @@ class ElevationExtractor(DataExtractor):
             elevation_lines = self.get_lines_near_key(lines, elevation_key_line)  # Check the sorting of the lines
 
             try:
-                extracted_elevation = self.get_elevation_from_lines(elevation_lines, page)
+                extracted_elevation = self.get_elevation_from_lines(elevation_lines, page_number)
                 if extracted_elevation.feature.elevation and extracted_elevation not in extracted_elevation_list:
                     extracted_elevation_list.append(extracted_elevation)
             except ValueError as error:
@@ -139,12 +114,12 @@ class ElevationExtractor(DataExtractor):
         # Return all elements of the sorted list
         return extracted_elevation_list
 
-    def get_elevation_from_lines(self, lines: list[TextLine], page: int) -> FeatureOnPage[Elevation]:
+    def get_elevation_from_lines(self, lines: list[TextLine], page_number: int) -> FeatureOnPage[Elevation]:
         r"""Matches the elevation in a string of text.
 
         Args:
             lines (list[TextLine]): Arbitrary string of text.
-            page (int): the page number (1-based) of the PDF document
+            page_number (int): the page number (1-based) of the PDF document
 
         Returns:
             Elevation: A list of potential elevation
@@ -179,7 +154,7 @@ class ElevationExtractor(DataExtractor):
             rect_union = None
 
         if elevation:
-            return FeatureOnPage(feature=Elevation(elevation=elevation), rect=rect_union, page=page)
+            return FeatureOnPage(feature=Elevation(elevation=elevation), rect=rect_union, page_number=page_number)
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 

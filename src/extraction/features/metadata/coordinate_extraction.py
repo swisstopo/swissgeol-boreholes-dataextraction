@@ -9,6 +9,7 @@ from decimal import Decimal
 import pymupdf
 import regex
 
+from extraction.utils.json import JsonFloatDecimal
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.utils.data_extractor import (
@@ -26,7 +27,7 @@ COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,3})?(\d{3})[\.\s'‘’]{0,3
 class CoordinateEntry:
     """Dataclass to represent a coordinate entry."""
 
-    coordinate_value: Decimal
+    coordinate_value: JsonFloatDecimal
 
     def __repr__(self):
         if self.coordinate_value > 1e5:
@@ -35,7 +36,6 @@ class CoordinateEntry:
             return f"{self.coordinate_value:07,}".replace(",", "'")
 
 
-@dataclass(kw_only=True)
 class Coordinate(ExtractedFeature):
     """Abstract class for coordinates."""
 
@@ -50,18 +50,6 @@ class Coordinate(ExtractedFeature):
 
     def __str__(self):
         return f"E: {self.east.coordinate_value}, N: {self.north.coordinate_value}"
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "E": float(self.east.coordinate_value),
-            "N": float(self.north.coordinate_value),
-            "is_correct": self.is_correct,
-        }
 
     @staticmethod
     def from_values(east: Decimal, north: Decimal, is_correct: bool | None = None) -> Coordinate | None:
@@ -91,22 +79,7 @@ class Coordinate(ExtractedFeature):
             logger.warning("Invalid coordinates format. Got E: %s, N: %s", east, north)
             return None
 
-    @classmethod
-    def from_json(cls, input: dict) -> Coordinate | None:
-        """Converts a dictionary to a Coordinate object.
 
-        Args:
-            input (dict): A dictionary containing the coordinate information.
-
-        Returns:
-            Coordinate | None: The coordinate object.
-        """
-        return Coordinate.from_values(
-            east=Decimal(input["E"]), north=Decimal(input["N"]), is_correct=input.get("is_correct")
-        )
-
-
-@dataclass
 class LV95Coordinate(Coordinate):
     """Dataclass to represent a coordinate in the LV95 format."""
 
@@ -117,7 +90,6 @@ class LV95Coordinate(Coordinate):
         )
 
 
-@dataclass
 class LV03Coordinate(Coordinate):
     """Dataclass to represent a coordinate in the LV03 format."""
 
@@ -140,12 +112,14 @@ class CoordinateExtractor(DataExtractor):
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " "}
 
-    def get_coordinates_with_x_y_labels(self, lines: list[TextLine], page: int) -> list[FeatureOnPage[Coordinate]]:
+    def get_coordinates_with_x_y_labels(
+        self, lines: list[TextLine], page_number: int
+    ) -> list[FeatureOnPage[Coordinate]]:
         """Find coordinates with explicit "X" and "Y" labels from the text lines.
 
         Args:
             lines (list[TextLine]): all the lines of text to search in
-            page (int): the page number (1-based) of the PDF document
+            page_number (int): the page number (1-based) of the PDF document
 
         Returns:
             list[FeatureOnPage[Coordinate]]: all found coordinates
@@ -172,7 +146,7 @@ class CoordinateExtractor(DataExtractor):
                 north=Decimal("".join(y_match[0].groups(default=""))),
             )
             if coordinates is not None and coordinates.is_valid():
-                found_coordinates.append(FeatureOnPage(feature=coordinates, rect=rect, page=page))
+                found_coordinates.append(FeatureOnPage(feature=coordinates, rect=rect, page_number=page_number))
         return found_coordinates
 
     def get_coordinates_near_key(self, lines: list[TextLine], page: int) -> list[FeatureOnPage[Coordinate]]:
@@ -246,7 +220,7 @@ class CoordinateExtractor(DataExtractor):
                         "{}.{}".format("".join(match.groups(default="")[4:-1]), match.groups(default="")[-1])
                     ),
                 ),
-                page=page,
+                page_number=page,
                 rect=rect,
             )
             for match, rect in CoordinateExtractor._match_text_with_rect(lines, full_regex, self.preprocess)

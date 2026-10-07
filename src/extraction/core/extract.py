@@ -202,6 +202,8 @@ def extract(
         borehole_predictions_list: list[BoreholePredictions] = build_borehole_predictions(merged_boreholes)
 
         return ExtractionResult(
-            predictions=FilePredictions(borehole_predictions_list, file_metadata, filename),
+            predictions=FilePredictions(
+                borehole_predictions_list=borehole_predictions_list, file_metadata=file_metadata, file_name=filename
+            ),
             pages_data=pages_data,
         )

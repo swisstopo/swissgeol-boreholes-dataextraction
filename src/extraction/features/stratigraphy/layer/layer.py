@@ -6,53 +6,28 @@ from decimal import Decimal
 import pymupdf
 
 from extraction.features.stratigraphy.interval.interval import Interval
-from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
+from extraction.utils.json import JsonSerializableRect
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature
 from swissgeol_doc_processing.utils.file_utils import parse_text
 
 
-class LayerDepthsEntry(RectWithPageMixin):
+@dataclass
+class LayerDepthsEntry:
     """Represents the upper or lower limit of a layer, used specifically for visualization and evaluation.
 
     Unlike `DepthColumnEntry` in `sidebarentry.py`, this class holds the extracted depth information,
-    rather than being involved throughout the extraction process. It includes utility methods for
-    data serialization, such as `to_json()`.
+    rather than being involved throughout the extraction process.
     """
 
-    def __init__(self, value: Decimal, rect: pymupdf.Rect | None, page_number: int):
-        self.value = value
-        self.rect_with_page = RectWithPage(rect, page_number)
-
-    def to_json(self) -> dict:
-        """Convert the LayerDepthsEntry object to a JSON serializable format."""
-        return {
-            "value": float(self.value),
-            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
-            "page": self.page_number if self.page_number else None,
-        }
+    value: Decimal
+    rect: JsonSerializableRect | None
+    page_number: int
 
     def __repr__(self):
         return f"{self.value}"
 
-    @classmethod
-    def from_json(cls, data: dict) -> "LayerDepthsEntry":
-        """Converts a dictionary to an object.
 
-        Args:
-            data (dict): A dictionary representing the layer depths entry.
-
-        Returns:
-            LayerDepthsEntry: the corresponding LayerDepthsEntry object.
-        """
-        return cls(
-            value=Decimal(data["value"]),
-            rect=pymupdf.Rect(data["rect"]) if data["rect"] else None,
-            page_number=data["page"],
-        )
-
-
-@dataclass
 class LayerDepths(ExtractedFeature):
     """Represents the start and end depth boundaries of a layer.
 
@@ -108,30 +83,6 @@ class LayerDepths(ExtractedFeature):
 
         return rect
 
-    def to_json(self) -> dict:
-        """Convert the LayerDepths object to a JSON serializable format."""
-        return {
-            "start": self.start.to_json() if self.start else None,
-            "end": self.end.to_json() if self.end else None,
-            "is_correct": self.is_correct,
-        }
-
-    @classmethod
-    def from_json(cls, data: dict) -> "LayerDepths":
-        """Converts a dictionary to an object.
-
-        Args:
-            data (dict): A dictionary representing the layer depths.
-
-        Returns:
-            LayerDepths: the corresponding LayerDepths object.
-        """
-        return cls(
-            start=LayerDepthsEntry.from_json(data["start"]) if data["start"] else None,
-            end=LayerDepthsEntry.from_json(data["end"]) if data["end"] else None,
-            is_correct=data.get("is_correct"),
-        )
-
     @classmethod
     def from_interval(cls, interval: Interval) -> "LayerDepths":
         """Converts an Interval to a LayerDepths object.
@@ -165,7 +116,6 @@ class LayerDepths(ExtractedFeature):
         return False
 
 
-@dataclass
 class Layer(ExtractedFeature):
     """Represents a finalized layer prediction in a borehole profile.
 
@@ -195,30 +145,3 @@ class Layer(ExtractedFeature):
             bool: True if both `depths.start` and `depths.end` are defined, False otherwise.
         """
         return bool(self.depths and self.depths.start and self.depths.end)
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "material_description": self.material_description.to_json() if self.material_description else None,
-            "depths": self.depths.to_json() if self.depths else None,
-            "is_correct": self.is_correct,
-        }
-
-    @classmethod
-    def from_json(cls, data: dict) -> "Layer":
-        """Converts a dictionary to an object.
-
-        Args:
-            data (dict): A dictionary representing the layer.
-
-        Returns:
-            Layer: The corresponding Layer object.
-        """
-        material_prediction = MaterialDescription.from_json(data["material_description"])
-        depths = LayerDepths.from_json(data["depths"]) if ("depths" in data and data["depths"] is not None) else None
-
-        return Layer(material_description=material_prediction, depths=depths, is_correct=data.get("is_correct"))

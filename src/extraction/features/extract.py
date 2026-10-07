@@ -155,9 +155,9 @@ class BoreholeExtractor:
                     text=pair.block.text,
                     lines=[
                         FeatureOnPage(
-                            feature=MaterialDescriptionLine(text_line.text),
+                            feature=MaterialDescriptionLine(text=text_line.text),
                             rect=text_line.rect,
-                            page=text_line.page_number,
+                            page_number=text_line.page_number,
                         )
                         for text_line in pair.block.lines
                     ],

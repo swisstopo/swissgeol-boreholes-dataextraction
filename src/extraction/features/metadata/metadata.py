@@ -1,10 +1,10 @@
 """Metadata for stratigraphy data."""
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import NamedTuple
 
 import pymupdf
+from pydantic import BaseModel
 
 from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import Coordinate, CoordinateExtractor
@@ -18,14 +18,6 @@ class PageDimensions(NamedTuple):
 
     width: float
     height: float
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {"width": self.width, "height": self.height}
 
 
 @dataclass
@@ -58,63 +50,19 @@ class MetadataInDocument:
         return cls(elevations=elevations, coordinates=coordinates)
 
 
-@dataclass
-class BoreholeMetadata:
+class BoreholeMetadata(BaseModel):
     """Metadata for stratigraphy data for a single borehole."""
 
     elevation: FeatureOnPage[Elevation] | None = None
     coordinates: FeatureOnPage[Coordinate] | None = None
     name: FeatureOnPage[BoreholeName] | None = None
 
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
 
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "elevation": self.elevation.to_json() if self.elevation else None,
-            "coordinates": self.coordinates.to_json() if self.coordinates else None,
-            "name": self.name.to_json() if self.name else None,
-        }
-
-    @classmethod
-    def from_json(cls, json_metadata: dict) -> "BoreholeMetadata":
-        """Converts a dictionary to an object.
-
-        Args:
-            json_metadata (dict): A dictionary representing the metadata.
-
-        Returns:
-            BoreholeMetadata: The metadata object.
-        """
-        return cls(
-            FeatureOnPage.from_json(json_metadata["elevation"], Elevation) if json_metadata["elevation"] else None,
-            FeatureOnPage.from_json(json_metadata["coordinates"], Coordinate)
-            if json_metadata["coordinates"]
-            else None,
-            FeatureOnPage.from_json(json_metadata["name"], BoreholeName) if json_metadata["name"] else None,
-        )
-
-
-@dataclass
-class FileMetadata:
+class FileMetadata(BaseModel):
     """Class to store and extract metadata at the file level (common to all boreholes in the file)."""
 
-    language: str | None = None  # TODO: Change to Enum for the supported languages
-    filename: Path = None
-    page_dimensions: list[PageDimensions] = None
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "language": self.language,
-            "page_dimensions": [page_dimensions.to_json() for page_dimensions in self.page_dimensions],
-        }
+    language: str | None  # TODO: Change to Enum for the supported languages
+    page_dimensions: list[PageDimensions]
 
     @classmethod
     def from_document(cls, document: pymupdf.Document, matching_params: dict) -> "FileMetadata":
@@ -132,9 +80,6 @@ class FileMetadata:
             document, matching_params["default_language"], matching_params["material_description"].keys()
         )
 
-        # Get the name of the document
-        filename = Path(document.name)
-
         # Get the dimensions of the document's pages
         page_dimensions = []
         for page in document:
@@ -145,28 +90,5 @@ class FileMetadata:
 
         return cls(
             language=language,
-            filename=filename,
             page_dimensions=page_dimensions,
-        )
-
-    @classmethod
-    def from_json(cls, json_metadata: dict, filename: str) -> "FileMetadata":
-        """Converts a dictionary to an object.
-
-        Args:
-            json_metadata (dict): A dictionary representing the metadata.
-            filename (str): The name of the file.
-
-        Returns:
-            FileMetadata: The metadata object.
-        """
-        language = json_metadata["language"]
-        page_dimensions = [
-            PageDimensions(width=page["width"], height=page["height"]) for page in json_metadata["page_dimensions"]
-        ]
-
-        return cls(
-            language=language,
-            page_dimensions=page_dimensions,
-            filename=Path(filename),
         )

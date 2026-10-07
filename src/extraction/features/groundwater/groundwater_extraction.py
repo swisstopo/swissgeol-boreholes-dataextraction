@@ -119,7 +119,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         return FeatureOnPage(
             feature=Groundwater(depth=depth, date=date, elevation=elevation),
             rect=rect_union,
-            page=page_number,
+            page_number=page_number,
         )
 
     def extract_groundwater(

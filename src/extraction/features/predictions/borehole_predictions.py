@@ -26,20 +26,6 @@ class BoreholePredictions:
     groundwater_in_borehole: GroundwatersInBorehole
     bounding_boxes: list[PageBoundingBoxes]
 
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "borehole_index": self.borehole_index,
-            "metadata": self.metadata.to_json(),
-            "layers": [layer.to_json() for layer in self.layers],
-            "bounding_boxes": [bboxes.to_json() for bboxes in self.bounding_boxes],
-            "groundwater": self.groundwater_in_borehole.to_json() if self.groundwater_in_borehole is not None else [],
-        }
-
     def to_csv(self) -> str:
         """Converts borehole layer data to CSV format.
 
@@ -68,24 +54,6 @@ class BoreholePredictions:
             )
 
         return output.getvalue()
-
-    @classmethod
-    def from_json(cls, json_object) -> "BoreholePredictions":
-        """Extract a BoreholePrediction object from a json dictionary.
-
-        Args:
-            json_object (dict): the json object containing the informations of the borehole
-
-        Returns:
-            (BoreholePredictions): the extracted object
-        """
-        return cls(
-            json_object["borehole_index"],
-            [Layer.from_json(layer_json) for layer_json in json_object["layers"]],
-            BoreholeMetadata.from_json(json_object["metadata"]),
-            GroundwatersInBorehole.from_json(json_object["groundwater"]),
-            [PageBoundingBoxes.from_json(bbox_json) for bbox_json in json_object["bounding_boxes"]],
-        )
 
     def filter_groundwater_entries(self):
         """Sets the depth and elevation of the groundwater entries of this borehole."""

@@ -1,6 +1,7 @@
 """This module contains functionality for detecting when a single borehole continues across pdf pages."""
 
 import dataclasses
+from decimal import Decimal
 
 import numpy as np
 
@@ -114,8 +115,7 @@ def _reconcile_duplicated_boundary_layer(previous_layer: Layer, current_layer: L
     ):
         return None
 
-    return dataclasses.replace(
-        previous_layer,
+    return Layer(
         material_description=MaterialDescription(
             text=previous_layer.material_description.text,
             lines=previous_layer.material_description.lines + current_layer.material_description.lines,
@@ -452,4 +452,4 @@ def _normalize_first_layer(borehole: ExtractedBorehole):
         and borehole.predictions[0].depths.end is not None
     ):
         end_page = borehole.predictions[0].depths.end.page_number
-        borehole.predictions[0].depths.start = LayerDepthsEntry(0.0, None, end_page)
+        borehole.predictions[0].depths.start = LayerDepthsEntry(Decimal(0), None, end_page)

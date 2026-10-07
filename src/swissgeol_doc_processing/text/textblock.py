@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Self
 
 import pymupdf
 
-from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
+from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.utils.data_extractor import (
     ExtractedFeature,
@@ -15,23 +14,12 @@ from swissgeol_doc_processing.utils.data_extractor import (
 )
 
 
-@dataclass
 class MaterialDescriptionLine(ExtractedFeature):
     """Class to represent a line of a material description in a PDF document."""
 
     text: str
 
-    def to_json(self) -> dict:
-        """Convert the MaterialDescriptionLine object to a JSON serializable dictionary."""
-        return {"text": self.text}
 
-    @classmethod
-    def from_json(cls, data: dict) -> Self:
-        """Converts a dictionary to an object."""
-        return cls(text=data["text"])
-
-
-@dataclass
 class MaterialDescription(ExtractedFeature):
     """Class to represent a material description in a PDF document."""
 
@@ -47,10 +35,10 @@ class MaterialDescription(ExtractedFeature):
         return [
             RectWithPage(
                 rect=pymupdf.Rect(
-                    min(line.rect_with_page.rect.x0 for line in self.lines if line.page_number == page),
-                    min(line.rect_with_page.rect.y0 for line in self.lines if line.page_number == page),
-                    max(line.rect_with_page.rect.x1 for line in self.lines if line.page_number == page),
-                    max(line.rect_with_page.rect.y1 for line in self.lines if line.page_number == page),
+                    min(line.rect.x0 for line in self.lines if line.page_number == page),
+                    min(line.rect.y0 for line in self.lines if line.page_number == page),
+                    max(line.rect.x1 for line in self.lines if line.page_number == page),
+                    max(line.rect.y1 for line in self.lines if line.page_number == page),
                 ),
                 page_number=page,
             )
@@ -98,26 +86,9 @@ class MaterialDescription(ExtractedFeature):
         self.text = "".join([line.feature.text for line in self.lines])
         return self
 
-    def to_json(self) -> dict:
-        """Convert the MaterialDescription object to a JSON serializable dictionary."""
-        return {
-            "text": self.text,
-            "lines": [line.to_json() for line in self.lines],
-            "is_correct": self.is_correct,
-        }
-
-    @classmethod
-    def from_json(cls, data: dict) -> Self:
-        """Converts a dictionary to an object."""
-        return cls(
-            text=data["text"],
-            lines=[FeatureOnPage.from_json(line, MaterialDescriptionLine) for line in data["lines"]],
-            is_correct=data.get("is_correct"),
-        )
-
 
 @dataclass
-class TextBlock(RectWithPageMixin):
+class TextBlock:
     """Class to represent a block of text in a PDF document.
 
     A TextBlock is a collection of Lines surrounded by Lines.
@@ -131,20 +102,19 @@ class TextBlock(RectWithPageMixin):
         self.line_count = len(self.lines)
         self.text = " ".join([line.text for line in self.lines])
         if self.line_count:
-            rect = pymupdf.Rect(
+            self.rect = pymupdf.Rect(
                 min(line.rect.x0 for line in self.lines),
                 min(line.rect.y0 for line in self.lines),
                 max(line.rect.x1 for line in self.lines),
                 max(line.rect.y1 for line in self.lines),
             )
         else:
-            rect = pymupdf.Rect()
+            self.rect = pymupdf.Rect()
 
         # go through all the lines and check if they are on the same page
         page_number_set = set(line.page_number for line in self.lines)
         assert len(page_number_set) < 2, "TextBlock spans multiple pages"
-        page_number = page_number_set.pop() if page_number_set else None
-        self.rect_with_page = RectWithPage(rect, page_number)
+        self.page = page_number_set.pop() if page_number_set else None
 
     def concatenate(self, other: TextBlock) -> TextBlock:
         """Concatenate two text blocks.

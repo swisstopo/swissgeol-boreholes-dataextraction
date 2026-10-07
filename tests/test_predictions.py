@@ -68,7 +68,7 @@ def sample_file_prediction() -> FilePredictions:
     )
     groundwater_in_bh = GroundwatersInBorehole(features=[groundwater_on_page])
 
-    file_metadata = FileMetadata(language="en", filename=filename, page_dimensions=[Mock(width=10, height=20)])
+    file_metadata = FileMetadata(language="en", page_dimensions=[Mock(width=10, height=20)])
     # TODO adapt tests
     metadata = BoreholeMetadata(coordinates=coord, elevation=None, name=name)
 
@@ -138,7 +138,7 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     )
     groundwater_in_bh = GroundwatersInBorehole(features=[groundwater_on_page])
 
-    file_metadata = FileMetadata(language="en", filename=filename, page_dimensions=[Mock(width=10, height=20)])
+    file_metadata = FileMetadata(language="en", page_dimensions=[Mock(width=10, height=20)])
     metadata = BoreholeMetadata(coordinates=coord, elevation=None, name=name)
 
     return FilePredictions(
