@@ -1,20 +1,18 @@
 """Classes for JSON-serializable bounding boxes of different parts of a borehole profile."""
 
-from dataclasses import dataclass
-
 import pymupdf
+from pydantic import BaseModel, Field
 
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
 from swissgeol_doc_processing.geometry.geometry_dataclasses import BoundingBox
 
 
-@dataclass
-class PageBoundingBoxes:
+class PageBoundingBoxes(BaseModel):
     """A class to represent the bounding boxes of sidebars and associated material descriptions."""
 
-    sidebar_bbox: BoundingBox | None
-    depth_column_entry_bboxes: list[BoundingBox]
-    material_description_bbox: BoundingBox
+    sidebar_bbox: BoundingBox | None = Field(serialization_alias="sidebar_rect")
+    depth_column_entry_bboxes: list[BoundingBox] = Field(serialization_alias="depth_column_entries")
+    material_description_bbox: BoundingBox = Field(serialization_alias="material_description_rect")
     page: int
 
     @classmethod

@@ -150,7 +150,7 @@ class Evaluator:
                 file_predictions.filename,
                 [
                     BoreholeGroundwaterWithGroundTruth(
-                        predictions.predictions.groundwater_in_borehole if predictions.predictions else None,
+                        predictions.predictions.groundwater if predictions.predictions else None,
                         predictions.ground_truth.groundwater
                         if predictions.ground_truth
                         else [],  # value can be `None`

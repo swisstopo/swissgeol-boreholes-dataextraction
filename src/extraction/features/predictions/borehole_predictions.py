@@ -24,8 +24,8 @@ class BoreholePredictions(BaseModel):
     borehole_index: int
     metadata: BoreholeMetadata
     layers: list[Layer]
-    groundwater_in_borehole: GroundwatersInBorehole
     bounding_boxes: list[PageBoundingBoxes]
+    groundwater: GroundwatersInBorehole
 
     def to_csv(self) -> str:
         """Converts borehole layer data to CSV format.
@@ -59,7 +59,7 @@ class BoreholePredictions(BaseModel):
     def filter_groundwater_entries(self):
         """Sets the depth and elevation of the groundwater entries of this borehole."""
         borehole_terrain_elevation = self.metadata.elevation.feature.elevation if self.metadata.elevation else None
-        self.groundwater_in_borehole.filter_entries(borehole_terrain_elevation, self.layers)
+        self.groundwater.filter_entries(borehole_terrain_elevation, self.layers)
 
 
 @dataclasses.dataclass

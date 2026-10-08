@@ -3,11 +3,11 @@
 import datetime
 import logging
 from collections import defaultdict
-from dataclasses import dataclass, field
 from decimal import Decimal
 
 import numpy as np
 import pymupdf
+from pydantic import BaseModel, Field, model_serializer
 from scipy.stats import pearsonr
 
 from extraction.features.stratigraphy.layer.layer import Layer
@@ -150,11 +150,23 @@ def _group_by_page(
     return pages
 
 
-@dataclass
-class GroundwatersInBorehole:
+class GroundwatersInBorehole(BaseModel):
     """Class for extracted groundwater information from a single borehole."""
 
-    features: list[FeatureOnPage[Groundwater]] = field(default_factory=list)
+    features: list[FeatureOnPage[Groundwater]] = Field(default_factory=list)
+
+    @model_serializer(mode="wrap")
+    def serialize_as_sorted_list(self, handler) -> dict:
+        return handler(
+            sorted(
+                self.features,
+                key=lambda e: (
+                    e.feature.depth or 0,
+                    e.feature.date or datetime.date.min,
+                    e.feature.elevation or 0,
+                ),
+            )
+        )
 
     def merge_compatible_candidates(self):
         """Merges candidates that likely describe the same groundwater reading.

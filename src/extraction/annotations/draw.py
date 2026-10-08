@@ -85,7 +85,7 @@ class PageDrawer:
             coordinates = borehole_predictions.metadata.coordinates
             elevation = borehole_predictions.metadata.elevation
             name = borehole_predictions.metadata.name
-            groundwaters = borehole_predictions.groundwater_in_borehole
+            groundwaters = borehole_predictions.groundwater
             bh_layers = borehole_predictions.layers
 
             if coordinates is not None and self.page_number == coordinates.page_number:

@@ -68,7 +68,7 @@ def sample_file_prediction() -> FilePredictions:
         page_number=1,
         rect=pymupdf.Rect(0, 0, 100, 100),
     )
-    groundwater_in_bh = GroundwatersInBorehole(features=[groundwater_on_page])
+    groundwater = GroundwatersInBorehole(features=[groundwater_on_page])
 
     file_metadata = FileMetadata(language="en", page_dimensions=[Mock(width=10, height=20)])
     # TODO adapt tests
@@ -80,7 +80,7 @@ def sample_file_prediction() -> FilePredictions:
                 borehole_index=0,
                 layers=layers,
                 metadata=metadata,
-                groundwater_in_borehole=groundwater_in_bh,
+                groundwater=groundwater,
                 bounding_boxes=[],
             )
         ],
@@ -142,7 +142,7 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
         page_number=1,
         rect=pymupdf.Rect(0, 0, 100, 100),
     )
-    groundwater_in_bh = GroundwatersInBorehole(features=[groundwater_on_page])
+    groundwater = GroundwatersInBorehole(features=[groundwater_on_page])
 
     file_metadata = FileMetadata(language="en", page_dimensions=[PageDimensions(width=10, height=20)])
     metadata = BoreholeMetadata(coordinates=coord, elevation=None, name=name)
@@ -153,14 +153,14 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
                 borehole_index=0,
                 layers=layers,
                 metadata=metadata,
-                groundwater_in_borehole=groundwater_in_bh,
+                groundwater=groundwater,
                 bounding_boxes=[],
             ),
             BoreholePredictions(
                 borehole_index=1,
                 layers=layers_2,
                 metadata=metadata,
-                groundwater_in_borehole=groundwater_in_bh,
+                groundwater=groundwater,
                 bounding_boxes=[],
             ),
         ],
