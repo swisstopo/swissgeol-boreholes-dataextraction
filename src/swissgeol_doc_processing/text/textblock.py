@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import pymupdf
+from pydantic import model_serializer
 
 from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage
 from swissgeol_doc_processing.text.textline import TextLine
@@ -18,6 +19,12 @@ class MaterialDescriptionLine(ExtractedFeature):
     """Class to represent a line of a material description in a PDF document."""
 
     text: str
+
+    @model_serializer(mode="wrap")
+    def serialize_without_is_correct(self, handler) -> dict:
+        serialized_dict = handler(self)
+        serialized_dict.pop("is_correct")
+        return serialized_dict
 
 
 class MaterialDescription(ExtractedFeature):

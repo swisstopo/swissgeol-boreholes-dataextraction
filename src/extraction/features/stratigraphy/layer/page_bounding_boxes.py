@@ -4,15 +4,15 @@ import pymupdf
 from pydantic import BaseModel, Field
 
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
-from swissgeol_doc_processing.geometry.geometry_dataclasses import BoundingBox
+from extraction.utils.json import JsonSerializableRect
 
 
 class PageBoundingBoxes(BaseModel):
     """A class to represent the bounding boxes of sidebars and associated material descriptions."""
 
-    sidebar_bbox: BoundingBox | None = Field(serialization_alias="sidebar_rect")
-    depth_column_entry_bboxes: list[BoundingBox] = Field(serialization_alias="depth_column_entries")
-    material_description_bbox: BoundingBox = Field(serialization_alias="material_description_rect")
+    sidebar_bbox: JsonSerializableRect | None = Field(serialization_alias="sidebar_rect")
+    depth_column_entry_bboxes: list[JsonSerializableRect] = Field(serialization_alias="depth_column_entries")
+    material_description_bbox: JsonSerializableRect = Field(serialization_alias="material_description_rect")
     page: int
 
     @classmethod
@@ -21,15 +21,15 @@ class PageBoundingBoxes(BaseModel):
     ) -> "PageBoundingBoxes":
         """Convert an optional sidebar and a material description bounding box to a BoundingBoxes object."""
         if sidebar:
-            depth_column_bbox = BoundingBox(sidebar.rect)
-            depth_column_entry_bboxes = [BoundingBox(entry.rect) for entry in sidebar.entries]
+            depth_column_bbox = sidebar.rect
+            depth_column_entry_bboxes = [entry.rect for entry in sidebar.entries]
         else:
             depth_column_bbox = None
             depth_column_entry_bboxes = []
         return PageBoundingBoxes(
             sidebar_bbox=depth_column_bbox,
             depth_column_entry_bboxes=depth_column_entry_bboxes,
-            material_description_bbox=BoundingBox(material_description_rect),
+            material_description_bbox=material_description_rect,
             page=page_number,
         )
 
@@ -49,9 +49,9 @@ class PageBoundingBoxes(BaseModel):
             raise ValueError("No bounding boxes available to determine extreme coordinates.")
 
         # Compute extreme coordinates
-        min_x = min(bbox.rect.x0 for bbox in all_bboxes)
-        min_y = min(bbox.rect.y0 for bbox in all_bboxes)
-        max_x = max(bbox.rect.x1 for bbox in all_bboxes)
-        max_y = max(bbox.rect.y1 for bbox in all_bboxes)
+        min_x = min(bbox.x0 for bbox in all_bboxes)
+        min_y = min(bbox.y0 for bbox in all_bboxes)
+        max_x = max(bbox.x1 for bbox in all_bboxes)
+        max_y = max(bbox.y1 for bbox in all_bboxes)
 
         return pymupdf.Rect(min_x, min_y, max_x, max_y)

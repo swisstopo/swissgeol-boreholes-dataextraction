@@ -10,8 +10,6 @@ import numpy as np
 import pymupdf
 from numpy.typing import ArrayLike
 
-from extraction.utils.json import JsonSerializableRect
-
 logger = logging.getLogger(__name__)
 
 
@@ -198,13 +196,6 @@ class Line:
 
     def asarray(self) -> np.ndarray:
         return np.array([self.start.x, self.start.y, self.end.x, self.end.y])
-
-
-@dataclass
-class BoundingBox:
-    """A single bounding box, JSON serializable."""
-
-    rect: JsonSerializableRect
 
 
 @dataclass

@@ -406,7 +406,7 @@ def _merge_boreholes(
         bounding_boxes=borehole_to_extend.bounding_boxes + borehole_continuation.bounding_boxes,
         metadata=_merge_metadata(borehole_to_extend.metadata, borehole_continuation.metadata),
         groundwater=GroundwatersInBorehole(
-            borehole_to_extend.groundwater.features + borehole_continuation.groundwater.features
+            features=borehole_to_extend.groundwater.features + borehole_continuation.groundwater.features
         ),
     )
 

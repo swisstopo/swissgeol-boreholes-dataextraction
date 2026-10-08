@@ -11,7 +11,6 @@ from extraction.features.stratigraphy.layer.continuation_detection import merge_
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
 from extraction.features.stratigraphy.layer.overlap_detection import OverlapResult
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
-from swissgeol_doc_processing.geometry.geometry_dataclasses import BoundingBox
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
@@ -30,7 +29,7 @@ def _page_bbox(page: int) -> PageBoundingBoxes:
     return PageBoundingBoxes(
         sidebar_bbox=None,
         depth_column_entry_bboxes=[],
-        material_description_bbox=BoundingBox(pymupdf.Rect(0, 0, 10, 10)),
+        material_description_bbox=pymupdf.Rect(0, 0, 10, 10),
         page=page,
     )
 
