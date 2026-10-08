@@ -112,8 +112,8 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
         Layer(
             material_description=MaterialDescription(text=descr, lines=[]),
             depths=LayerDepths(
-                start=LayerDepthsEntry(start, pymupdf.Rect(), 0) if start is not None else None,
-                end=LayerDepthsEntry(end, pymupdf.Rect(), 0),
+                start=LayerDepthsEntry(value=start, rect=pymupdf.Rect(), page_number=0) if start is not None else None,
+                end=LayerDepthsEntry(value=end, rect=pymupdf.Rect(), page_number=0),
             ),
         )
         for descr, start, end in [
@@ -126,7 +126,8 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
         Layer(
             material_description=MaterialDescription(text=descr, lines=[]),
             depths=LayerDepths(
-                start=LayerDepthsEntry(start, pymupdf.Rect(), 0), end=LayerDepthsEntry(end, pymupdf.Rect(), 0)
+                start=LayerDepthsEntry(value=start, rect=pymupdf.Rect(), page_number=0),
+                end=LayerDepthsEntry(value=end, rect=pymupdf.Rect(), page_number=0),
             ),
         )
         for descr, start, end in [
@@ -251,13 +252,15 @@ def test_merge_boreholes():
             Layer(
                 material_description=MaterialDescription(text="first layer", lines=[]),
                 depths=LayerDepths(
-                    start=LayerDepthsEntry(Decimal(0), pymupdf.Rect(), 0),
-                    end=LayerDepthsEntry(Decimal(1), pymupdf.Rect(), 0),
+                    start=LayerDepthsEntry(value=Decimal(0), rect=pymupdf.Rect(), page_number=0),
+                    end=LayerDepthsEntry(value=Decimal(1), rect=pymupdf.Rect(), page_number=0),
                 ),
             ),
             Layer(
                 material_description=MaterialDescription(text="second", lines=[]),
-                depths=LayerDepths(start=LayerDepthsEntry(Decimal(1), pymupdf.Rect(), 0), end=None),
+                depths=LayerDepths(
+                    start=LayerDepthsEntry(value=Decimal(1), rect=pymupdf.Rect(), page_number=0), end=None
+                ),
             ),
         ],
         [get_mock_bb(1)],
@@ -266,7 +269,9 @@ def test_merge_boreholes():
         [
             Layer(
                 material_description=MaterialDescription(text="layer", lines=[]),
-                depths=LayerDepths(start=None, end=LayerDepthsEntry(Decimal(2), pymupdf.Rect(), 1)),
+                depths=LayerDepths(
+                    start=None, end=LayerDepthsEntry(value=Decimal(2), rect=pymupdf.Rect(), page_number=1)
+                ),
             ),
         ],
         [get_mock_bb(2)],

@@ -4,6 +4,8 @@ import csv
 import dataclasses
 import io
 
+from pydantic import BaseModel
+
 from core.ground_truth import (
     GroundTruthBorehole,
     GroundTruthGroundwater,
@@ -16,13 +18,12 @@ from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 
 
-@dataclasses.dataclass
-class BoreholePredictions:
+class BoreholePredictions(BaseModel):
     """Class that hold predicted information about a single borehole."""
 
     borehole_index: int
-    layers: list[Layer]
     metadata: BoreholeMetadata
+    layers: list[Layer]
     groundwater_in_borehole: GroundwatersInBorehole
     bounding_boxes: list[PageBoundingBoxes]
 

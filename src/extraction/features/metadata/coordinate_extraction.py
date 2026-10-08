@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from decimal import Decimal
 
 import pymupdf
 import regex
-from pydantic import model_serializer, model_validator
+from pydantic import BaseModel, model_serializer, model_validator
 
 from extraction.utils.json import JsonFloatDecimal
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
@@ -24,8 +23,7 @@ logger = logging.getLogger(__name__)
 COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,3})?(\d{3})[\.\s'‘’]{0,3}(\d{3})(?:\.(\d{1,}))?"
 
 
-@dataclass(kw_only=True)
-class CoordinateEntry:
+class CoordinateEntry(BaseModel):
     """Dataclass to represent a coordinate entry."""
 
     coordinate_value: JsonFloatDecimal
@@ -75,8 +73,11 @@ class Coordinate(ExtractedFeature):
         north_data = serialized_dict.pop("north", {})
 
         # 3. Flatten them into "E" and "N" while leaving other fields untouched
-        serialized_dict["E"] = east_data.get("coordinate_value")
-        serialized_dict["N"] = north_data.get("coordinate_value")
+        serialized_dict = {
+            "E": east_data.get("coordinate_value"),
+            "N": north_data.get("coordinate_value"),
+            **serialized_dict,
+        }
 
         return serialized_dict
 

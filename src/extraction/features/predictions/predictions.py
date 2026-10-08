@@ -233,11 +233,11 @@ def build_borehole_predictions(extracted_boreholes: list[ExtractedBorehole]) -> 
     """
     return [
         BoreholePredictions(
-            borehole_index,
-            borehole.predictions,
-            borehole.metadata,
-            borehole.groundwater,
-            borehole.bounding_boxes,
+            borehole_index=borehole_index,
+            layers=borehole.predictions,
+            metadata=borehole.metadata,
+            groundwater_in_borehole=borehole.groundwater,
+            bounding_boxes=borehole.bounding_boxes,
         )
         for borehole_index, borehole in enumerate(extracted_boreholes)
     ]

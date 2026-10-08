@@ -1,7 +1,6 @@
 """Metadata for stratigraphy data."""
 
 from dataclasses import dataclass
-from typing import NamedTuple
 
 import pymupdf
 from pydantic import BaseModel
@@ -13,7 +12,7 @@ from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.language_detection import detect_language_of_document
 
 
-class PageDimensions(NamedTuple):
+class PageDimensions(BaseModel):
     """Class for page dimensions."""
 
     width: float
@@ -61,7 +60,7 @@ class BoreholeMetadata(BaseModel):
 class FileMetadata(BaseModel):
     """Class to store and extract metadata at the file level (common to all boreholes in the file)."""
 
-    language: str | None  # TODO: Change to Enum for the supported languages
+    language: str  # TODO: Change to Enum for the supported languages
     page_dimensions: list[PageDimensions]
 
     @classmethod

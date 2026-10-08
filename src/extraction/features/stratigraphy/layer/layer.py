@@ -1,28 +1,25 @@
 """Layer class definition."""
 
-from dataclasses import dataclass
-from decimal import Decimal
-
 import pymupdf
+from pydantic import BaseModel, Field
 
 from extraction.features.stratigraphy.interval.interval import Interval
-from extraction.utils.json import JsonSerializableRect
+from extraction.utils.json import JsonFloatDecimal, JsonSerializableRect
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature
 from swissgeol_doc_processing.utils.file_utils import parse_text
 
 
-@dataclass
-class LayerDepthsEntry:
+class LayerDepthsEntry(BaseModel):
     """Represents the upper or lower limit of a layer, used specifically for visualization and evaluation.
 
     Unlike `DepthColumnEntry` in `sidebarentry.py`, this class holds the extracted depth information,
     rather than being involved throughout the extraction process.
     """
 
-    value: Decimal
+    value: JsonFloatDecimal
     rect: JsonSerializableRect | None
-    page_number: int
+    page_number: int = Field(serialization_alias="page")
 
     def __repr__(self):
         return f"{self.value}"
@@ -96,8 +93,10 @@ class LayerDepths(ExtractedFeature):
         start = interval.start
         end = interval.end
         return cls(
-            start=LayerDepthsEntry(start.value, start.rect, start.page_number) if start else None,
-            end=LayerDepthsEntry(end.value, end.rect, end.page_number) if end else None,
+            start=LayerDepthsEntry(value=start.value, rect=start.rect, page_number=start.page_number)
+            if start
+            else None,
+            end=LayerDepthsEntry(value=end.value, rect=end.rect, page_number=end.page_number) if end else None,
         )
 
     def is_valid_depth_interval(self, start: float, end: float) -> bool:

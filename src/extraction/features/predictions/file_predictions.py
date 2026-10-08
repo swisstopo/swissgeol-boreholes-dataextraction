@@ -1,6 +1,6 @@
 """Classes for predictions per PDF file."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from core.benchmark_utils import Metrics
 from extraction.evaluation.evaluation_dataclasses import BoreholeMetadataMetrics
@@ -31,7 +31,7 @@ class FilePredictionsMetrics(BaseModel):
 class FilePredictionsWithMetrics(BaseModel):
     """Predictions for a single PDF file, including optional per-category evaluation metrics."""
 
-    filename: str = Field(exclude=True)
+    filename: str
     file_metadata: FileMetadata
     boreholes: list[BoreholePredictions]
     metrics: FilePredictionsMetrics | None

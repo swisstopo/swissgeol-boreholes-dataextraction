@@ -150,7 +150,7 @@ def main():
     try:
         with open(args.predictions_path, encoding="utf8") as file:
             predictions = json.load(file)
-        predictions = OverallFilePredictions.from_json(predictions)
+        predictions = OverallFilePredictions.model_validate(predictions)
     except FileNotFoundError:
         logger.error("Predictions file not found: %s", args.predictions_path)
         return

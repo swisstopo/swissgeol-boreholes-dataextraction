@@ -4,11 +4,11 @@ This module defines the DataExtractor class for extracting data from stratigraph
 """
 
 import logging
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 import pymupdf
 import regex
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_serializer
 
 from extraction.utils.json import JsonSerializableRect
 from swissgeol_doc_processing.text.textline import TextLine
@@ -21,6 +21,14 @@ class ExtractedFeature(BaseModel):
 
     is_correct: bool | None = None
 
+    @model_serializer(mode="wrap")
+    def move_is_correct_end(self, handler) -> dict[str, Any]:
+        """Put the is_correct field at the end of the serialized object."""
+        data = handler(self)
+        value = data.pop("is_correct")
+        data["is_correct"] = value
+        return data
+
 
 T = TypeVar("T", bound=ExtractedFeature)
 
@@ -28,12 +36,18 @@ T = TypeVar("T", bound=ExtractedFeature)
 class FeatureOnPage(BaseModel, Generic[T]):
     """Class for an extracted feature, together with the page and where on that page the feature was extracted from."""
 
-    feature: T
+    feature: T = Field(exclude=True)
+    page_number: int = Field(serialization_alias="page")
     rect: JsonSerializableRect
-    page_number: int
 
     def __repr__(self):
         return f"{self.feature}"
+
+    @model_serializer(mode="wrap")
+    def serialize(self, handler) -> dict[str, Any]:
+        """Serialize with the feature's attributes flattened."""
+        serialized_self = handler(self)
+        return {**self.feature.model_dump(), **serialized_self}
 
 
 class DataExtractor:

@@ -452,4 +452,4 @@ def _normalize_first_layer(borehole: ExtractedBorehole):
         and borehole.predictions[0].depths.end is not None
     ):
         end_page = borehole.predictions[0].depths.end.page_number
-        borehole.predictions[0].depths.start = LayerDepthsEntry(Decimal(0), None, end_page)
+        borehole.predictions[0].depths.start = LayerDepthsEntry(value=Decimal(0), rect=None, page_number=end_page)
