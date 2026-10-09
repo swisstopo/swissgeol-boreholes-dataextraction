@@ -15,6 +15,10 @@ from swissgeol_doc_processing.utils.data_extractor import (
 )
 
 
+# TODO: the correctness of an individual MaterialDescriptionLine is not evaluated. Therefore, the class
+# should ideally not inherit from ExtractedFeature. However, this would then not allow us to define a
+# FeatureOnPage[MaterialDescriptionLine]. In future, we should de-couple ExtractedFeature and
+# FeatureOnPage, and afterwards remove the inheritance and the modified serialization logic here.
 class MaterialDescriptionLine(ExtractedFeature):
     """Class to represent a line of a material description in a PDF document."""
 
