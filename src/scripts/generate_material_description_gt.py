@@ -35,8 +35,7 @@ def generate(prediction: Path, ground_truth: Path) -> None:
         ground_truth (Path): Path to the ground truth JSON file to update.
     """
     new_ground_truth = ground_truth.parent / f"{ground_truth.stem}.new{ground_truth.suffix}"
-    with open(prediction, encoding="utf8") as f:
-        predictions = OverallFilePredictions.from_json(json.load(f))
+    predictions = OverallFilePredictions.model_validate_json(prediction.read_text())
     gts = GroundTruth(ground_truth)
 
     for file_prediction in predictions.file_predictions_list:

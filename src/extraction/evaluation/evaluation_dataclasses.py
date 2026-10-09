@@ -1,14 +1,11 @@
 """Evaluation utilities."""
 
-from dataclasses import dataclass
-
-from pydantic import ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.benchmark_utils import Metrics
 
 
-@dataclass
-class BoreholeMetadataMetrics:
+class BoreholeMetadataMetrics(BaseModel):
     """Metrics for metadata."""
 
     model_config = ConfigDict(populate_by_name=True)

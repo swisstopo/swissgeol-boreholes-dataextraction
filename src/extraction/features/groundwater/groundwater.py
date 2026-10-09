@@ -26,7 +26,7 @@ class Groundwater(ExtractedFeature):
         None  # Date of the groundwater measurement, if several dates
         # are present, the date of the document the last measurement is taken
     )
-    elevation: Decimal | None = None  # Elevation of the groundwater relative to the mean sea level
+    elevation: JsonFloatDecimal | None = None  # Elevation of the groundwater relative to the mean sea level
 
     def __str__(self) -> str:
         """Converts the object to a string.

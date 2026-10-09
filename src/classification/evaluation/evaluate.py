@@ -162,7 +162,7 @@ class AllClassificationMetrics:
         return {
             f"global_{class_.name}_{k}": v
             for class_, metrics in self.global_metrics.items()
-            for k, v in metrics.model_dump()
+            for k, v in metrics.model_dump().items()
         }
 
     @property

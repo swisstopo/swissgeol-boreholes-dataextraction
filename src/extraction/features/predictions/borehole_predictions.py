@@ -57,11 +57,6 @@ class BoreholePredictions(BaseModel):
 
         return output.getvalue()
 
-    def filter_groundwater_entries(self):
-        """Sets the depth and elevation of the groundwater entries of this borehole."""
-        borehole_terrain_elevation = self.metadata.elevation.feature.elevation if self.metadata.elevation else None
-        self.groundwater.filter_entries(borehole_terrain_elevation, self.layers)
-
 
 @dataclasses.dataclass
 class BoreholePredictionsWithGroundTruth:
