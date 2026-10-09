@@ -60,8 +60,7 @@ def read_json_predictions(path: Path) -> OverallFilePredictions:
     if not path.exists():
         return OverallFilePredictions()
     try:
-        with open(path, encoding="utf8") as f:
-            return OverallFilePredictions.model_validate(f)
+        return OverallFilePredictions.model_validate_json(path.read_text())
     except ValidationError:
         logger.warning(f"Unable to load prediction from file {path}")
         return OverallFilePredictions()

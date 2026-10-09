@@ -8,7 +8,7 @@ from typing import Any, Generic, TypeVar
 
 import pymupdf
 import regex
-from pydantic import BaseModel, Field, model_serializer
+from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 
 from extraction.utils.json import JsonSerializableRect
 from swissgeol_doc_processing.text.textline import TextLine
@@ -36,8 +36,10 @@ T = TypeVar("T", bound=ExtractedFeature)
 class FeatureOnPage(BaseModel, Generic[T]):
     """Class for an extracted feature, together with the page and where on that page the feature was extracted from."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     feature: T
-    page_number: int = Field(serialization_alias="page")
+    page_number: int = Field(alias="page")
     rect: JsonSerializableRect
 
     def __repr__(self):
@@ -49,6 +51,21 @@ class FeatureOnPage(BaseModel, Generic[T]):
         serialized_self = handler(self)
         feature = serialized_self.pop("feature")
         return {**feature, **serialized_self}
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_flattened(cls, data: Any) -> Any:
+        """Serialize from a JSON object where feature's attributes were flattened."""
+        if not isinstance(data, dict) or "feature" in data:
+            return data
+
+        own_fields = {"page", "page_number", "rect"}
+
+        return {
+            "feature": {k: v for k, v in data.items() if k not in own_fields},
+            "page": data["page"],
+            "rect": data["rect"],
+        }
 
 
 class DataExtractor:

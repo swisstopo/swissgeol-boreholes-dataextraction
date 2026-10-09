@@ -1,7 +1,7 @@
 """Layer class definition."""
 
 import pymupdf
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from extraction.features.stratigraphy.interval.interval import Interval
 from extraction.utils.json import JsonFloatDecimal, JsonSerializableRect
@@ -17,9 +17,11 @@ class LayerDepthsEntry(BaseModel):
     rather than being involved throughout the extraction process.
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     value: JsonFloatDecimal
     rect: JsonSerializableRect | None
-    page_number: int = Field(serialization_alias="page")
+    page_number: int = Field(alias="page")
 
     def __repr__(self):
         return f"{self.value}"

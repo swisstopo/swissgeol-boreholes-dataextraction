@@ -1,7 +1,7 @@
 """Classes for JSON-serializable bounding boxes of different parts of a borehole profile."""
 
 import pymupdf
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
 from extraction.utils.json import JsonSerializableRect
@@ -10,9 +10,11 @@ from extraction.utils.json import JsonSerializableRect
 class PageBoundingBoxes(BaseModel):
     """A class to represent the bounding boxes of sidebars and associated material descriptions."""
 
-    sidebar_bbox: JsonSerializableRect | None = Field(serialization_alias="sidebar_rect")
-    depth_column_entry_bboxes: list[JsonSerializableRect] = Field(serialization_alias="depth_column_entries")
-    material_description_bbox: JsonSerializableRect = Field(serialization_alias="material_description_rect")
+    model_config = ConfigDict(populate_by_name=True)
+
+    sidebar_bbox: JsonSerializableRect | None = Field(alias="sidebar_rect")
+    depth_column_entry_bboxes: list[JsonSerializableRect] = Field(alias="depth_column_entries")
+    material_description_bbox: JsonSerializableRect = Field(alias="material_description_rect")
     page: int
 
     @classmethod

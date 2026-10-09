@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from pydantic import ConfigDict, Field
+
 from core.benchmark_utils import Metrics
 
 
@@ -9,6 +11,8 @@ from core.benchmark_utils import Metrics
 class BoreholeMetadataMetrics:
     """Metrics for metadata."""
 
-    elevation_metrics: Metrics
-    coordinates_metrics: Metrics
-    name_metrics: Metrics
+    model_config = ConfigDict(populate_by_name=True)
+
+    elevation_metrics: Metrics = Field(alias="elevation")
+    coordinates_metrics: Metrics = Field(alias="coordinates")
+    name_metrics: Metrics = Field(alias="name")

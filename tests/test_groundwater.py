@@ -119,7 +119,6 @@ def test_evaluate_with_ground_truth(groundtruth, groundwater_at_2m22, groundwate
     )
 
     # Assertions
-    assert groundwater_metric.filename == filename
     assert groundwater_metric.groundwater_metrics.precision == 1.0
 
 
@@ -169,13 +168,11 @@ def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwat
     )
 
     # Assertions
-    assert gw_1.filename == "example_borehole_profile.pdf"
     assert gw_1.groundwater_metrics.f1 == 1.0
     assert gw_1.groundwater_metrics.tp == 2.0
     assert gw_1.groundwater_metrics.fn == 0.0
     assert gw_1.groundwater_metrics.fp == 0.0
 
-    assert gw_2.filename == "example_borehole_profile_2.pdf"
     assert gw_2.groundwater_metrics.f1 == 1.0
     assert gw_2.groundwater_metrics.tp == 2.0
     assert gw_2.groundwater_metrics.fn == 0.0

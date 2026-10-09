@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from pydantic import ConfigDict
+
 from core.benchmark_utils import Metrics
 from extraction.evaluation.utility import evaluate
 from extraction.features.groundwater.groundwater_extraction import Groundwater
@@ -12,7 +14,8 @@ from extraction.features.predictions.borehole_predictions import FileGroundwater
 class GroundwaterMetrics:
     """Class for storing the metrics of the groundwater information."""
 
-    filename: str
+    model_config = ConfigDict(populate_by_name=True)
+
     groundwater_metrics: Metrics = Metrics()
     groundwater_depth_metrics: Metrics = Metrics()
     groundwater_elevation_metrics: Metrics = Metrics()
@@ -84,7 +87,6 @@ class GroundwaterEvaluator:
             groundwater_depth_metrics=Metrics.micro_average(groundwater_depth_metrics_list),
             groundwater_elevation_metrics=Metrics.micro_average(groundwater_elevation_metrics_list),
             groundwater_date_metrics=Metrics.micro_average(groundwater_date_metrics_list),
-            filename=file_predictions.filename,
         )
 
     @staticmethod

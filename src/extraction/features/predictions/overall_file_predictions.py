@@ -1,6 +1,6 @@
 """Classes for predictions per PDF file."""
 
-from pydantic import BaseModel, Field, model_serializer
+from pydantic import BaseModel, Field, model_serializer, model_validator
 
 from extraction.features.predictions.file_predictions import FilePredictionsWithMetrics
 
@@ -16,6 +16,17 @@ class OverallFilePredictions(BaseModel):
         serialized_dict = handler(self)
 
         return {entry.pop("filename"): entry for entry in serialized_dict["file_predictions_list"]}
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_flat_json(cls, data):
+        if isinstance(data, dict) and "file_predictions_list" not in data:
+            return {
+                "file_predictions_list": [
+                    {"filename": filename, **prediction} for filename, prediction in data.items()
+                ]
+            }
+        return data
 
     def contains(self, filename: str) -> bool:
         """Check if `file_predictions_list` contains `filename`.
