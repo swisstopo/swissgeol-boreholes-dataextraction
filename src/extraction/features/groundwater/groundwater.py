@@ -3,13 +3,14 @@
 import datetime
 import logging
 from collections import defaultdict
-from dataclasses import dataclass, field
+from decimal import Decimal
 
 import numpy as np
 import pymupdf
 from scipy.stats import pearsonr
 
 from extraction.features.stratigraphy.layer.layer import Layer
+from extraction.utils.json import JsonFloatDecimal
 from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature, FeatureOnPage
 
 DATE_FORMAT = "%Y-%m-%d"
@@ -17,16 +18,15 @@ DATE_FORMAT = "%Y-%m-%d"
 logger = logging.getLogger(__name__)
 
 
-@dataclass
 class Groundwater(ExtractedFeature):
     """Abstract class for Groundwater Information."""
 
-    depth: float | None  # Depth of the groundwater relative to the surface
+    depth: JsonFloatDecimal | None  # Depth of the groundwater relative to the surface
     date: datetime.date | None = (
         None  # Date of the groundwater measurement, if several dates
         # are present, the date of the document the last measurement is taken
     )
-    elevation: float | None = None  # Elevation of the groundwater relative to the mean sea level
+    elevation: JsonFloatDecimal | None = None  # Elevation of the groundwater relative to the mean sea level
 
     def __str__(self) -> str:
         """Converts the object to a string.
@@ -38,14 +38,14 @@ class Groundwater(ExtractedFeature):
 
     @classmethod
     def from_json_values(
-        cls, depth: float | None, date: str | None, elevation: float | None, is_correct: bool | None = None
+        cls, depth: Decimal | None, date: str | None, elevation: Decimal | None, is_correct: bool | None = None
     ) -> "Groundwater":
         """Converts the object from a dictionary.
 
         Args:
-            depth (float | None): The depth of the groundwater.
+            depth (Decimal | None): The depth of the groundwater.
             date (str | None): The measurement date of the groundwater.
-            elevation (float | None): The elevation of the groundwater.
+            elevation (Decimal | None): The elevation of the groundwater.
             is_correct (bool | None): Indicator of correctness w.r.t. ground truth.
 
         Returns:
@@ -56,23 +56,6 @@ class Groundwater(ExtractedFeature):
         date = datetime.datetime.strptime(date, DATE_FORMAT).date()
         date = date.replace(year=date.year - 100) if date > datetime.datetime.now().date() else date
         return cls(depth=depth, date=date, elevation=elevation, is_correct=is_correct)
-
-    @classmethod
-    def from_json(cls, json: dict) -> "Groundwater":
-        """Converts a dictionary to an object.
-
-        Args:
-            json (dict): A dictionary representing the groundwater information.
-
-        Returns:
-            Groundwater: The groundwater information object.
-        """
-        return cls.from_json_values(
-            depth=json["depth"],
-            date=json["date"],
-            elevation=json["elevation"],
-            is_correct=json.get("is_correct"),
-        )
 
     def format_date(self) -> str | None:
         """Formats the date of the groundwater measurement.
@@ -85,32 +68,19 @@ class Groundwater(ExtractedFeature):
         else:
             return None
 
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "date": self.format_date(),
-            "depth": self.depth,
-            "elevation": self.elevation,
-            "is_correct": self.is_correct,
-        }
-
-    def infer_infos(self, terrain_elevation: float | None, layers: list[Layer], feature_rect: pymupdf.Rect):
+    def infer_infos(self, terrain_elevation: Decimal | None, layers: list[Layer], feature_rect: pymupdf.Rect):
         """Sets the depth or elevation of the groundwater, knowing one and the terrain elevation.
 
         If both information are missing, tries to infer them from the given layers and the feature rectangle.
 
         Args:
-            terrain_elevation (float): The elevation of the terrain at the top of the borehole.
+            terrain_elevation (Decimal): The elevation of the terrain at the top of the borehole.
             layers (list[Layer]): The list of layers in the borehole.
             feature_rect (pymupdf.Rect): The bounding box of the groundwater feature.
         """
         if self.depth is None:
             if self.elevation is not None and terrain_elevation is not None:
-                self.depth = round(terrain_elevation - self.elevation, 2)
+                self.depth = terrain_elevation - self.elevation
             else:
                 # TODO https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/293
                 # Optional method to infer groundwater depths when they are not explicitly provided.
@@ -122,9 +92,9 @@ class Groundwater(ExtractedFeature):
             return
 
         if self.elevation is None and terrain_elevation is not None:
-            self.elevation = round(terrain_elevation - self.depth, 2)
+            self.elevation = terrain_elevation - self.depth
 
-    def infer_depth(self, layers: list[Layer], feature_rect: pymupdf.Rect) -> float | None:
+    def infer_depth(self, layers: list[Layer], feature_rect: pymupdf.Rect) -> Decimal | None:
         """Infers the depth of the groundwater feature based on the given layers and feature rectangle.
 
         TODO https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/293
@@ -136,13 +106,13 @@ class Groundwater(ExtractedFeature):
             feature_rect (pymupdf.Rect): The bounding box of the groundwater feature.
 
         Returns:
-            float | None: The inferred depth of the groundwater feature, or None if it could not be determined.
+            Decimal | None: The inferred depth of the groundwater feature, or None if it could not be determined.
         """
         # Step 1: Prepare depths and y-values
         depths = np.array(
             sorted(
                 {
-                    (d.value, (d.rect.y0 + d.rect.y1) / 2)
+                    (float(d.value), (d.rect.y0 + d.rect.y1) / 2)
                     for layer in layers
                     if layer.depths is not None
                     for d in (layer.depths.start, layer.depths.end)
@@ -164,56 +134,28 @@ class Groundwater(ExtractedFeature):
         if y_value < min(depths[:, 1]) or y_value > max(depths[:, 1]):  # out of bounds, not reliable
             return None
         a, b = np.polyfit(depths[:, 0], depths[:, 1], 1)
-        depth = round((y_value - b) / a, 2)
+        depth = Decimal(str(round((y_value - b) / a, 2)))
         logger.info(f"Inferred depth for groundwater: {depth}")
         return depth
 
 
-def _group_by_page(
-    features: list[FeatureOnPage[Groundwater]],
-) -> dict[int, list[FeatureOnPage[Groundwater]]]:
-    """Group groundwater features by their page number, preserving order within each page."""
-    pages: dict[int, list[FeatureOnPage[Groundwater]]] = defaultdict(list)
-    for feature in features:
-        pages[feature.page_number].append(feature)
-    return pages
-
-
-@dataclass
 class GroundwatersInBorehole:
-    """Class for extracted groundwater information from a single borehole."""
+    """Class for postprocessing extracted groundwater information from a single borehole."""
 
-    features: list[FeatureOnPage[Groundwater]] = field(default_factory=list)
-
-    def to_json(self) -> list[dict]:
-        """Converts the object to a list of dictionaries.
-
-        Returns:
-            list[dict]: The object as a list of dictionaries.
-        """
-        sorted_entries = sorted(
-            self.features,
+    @staticmethod
+    def sort_groundwater(features: list[FeatureOnPage[Groundwater]]) -> list[FeatureOnPage[Groundwater]]:
+        """Return the extracted groundwater features in a canonical order."""
+        return sorted(
+            features,
             key=lambda e: (
                 e.feature.depth or 0,
                 e.feature.date or datetime.date.min,
                 e.feature.elevation or 0,
             ),
         )
-        return [entry.to_json() for entry in sorted_entries]
 
-    @classmethod
-    def from_json(cls, json_object: list[dict]) -> "GroundwatersInBorehole":
-        """Extract a GroundwatersInBorehole object from a json dictionary.
-
-        Args:
-            json_object (list[dict]): the json object containing the information of the borehole
-
-        Returns:
-            GroundwatersInBorehole: the GroundwatersInBorehole object
-        """
-        return cls([FeatureOnPage.from_json(gw_data, Groundwater) for gw_data in json_object])
-
-    def merge_compatible_candidates(self):
+    @staticmethod
+    def merge_compatible_candidates(features: list[FeatureOnPage[Groundwater]]) -> list[FeatureOnPage[Groundwater]]:
         """Merges candidates that likely describe the same groundwater reading.
 
         Some documents mention one groundwater reading in more than one place, so different mentions of the
@@ -243,7 +185,7 @@ class GroundwatersInBorehole:
                 for attribute in ("depth", "date", "elevation"):
                     if getattr(target.feature, attribute) is None:
                         setattr(target.feature, attribute, getattr(other.feature, attribute))
-                target.rect_with_page.rect |= other.rect
+                target.rect |= other.rect
 
         def merge_page(candidates: list[FeatureOnPage[Groundwater]]) -> list[FeatureOnPage[Groundwater]]:
             result = list(candidates)
@@ -263,17 +205,18 @@ class GroundwatersInBorehole:
                     break
             return result
 
-        pages = _group_by_page(self.features)
+        pages = GroundwatersInBorehole._group_by_page(features)
 
-        self.features = [gw for page_candidates in pages.values() for gw in merge_page(page_candidates)]
+        return [gw for page_candidates in pages.values() for gw in merge_page(page_candidates)]
 
-    def remove_overlaps(self):
+    @staticmethod
+    def remove_overlaps(features: list[FeatureOnPage[Groundwater]]) -> list[FeatureOnPage[Groundwater]]:
         """Removes groundwater entries whose bounding box overlaps with another entry on the same page.
 
         When two entries' rects intersect, only the more compact one is kept, since the larger one likely
         just encloses unrelated neighboring text along with the actual reading.
         """
-        pages = _group_by_page(self.features)
+        pages = GroundwatersInBorehole._group_by_page(features)
 
         result: list[FeatureOnPage[Groundwater]] = []
         for page_candidates in pages.values():
@@ -292,16 +235,30 @@ class GroundwatersInBorehole:
                 if keep:
                     non_overlapping.append(gw)
             result.extend(non_overlapping)
-        self.features = result
+        return result
 
-    def filter_entries(self, terrain_elevation: float | None, layers: list[Layer]):
+    @staticmethod
+    def filter_entries(
+        features: list[FeatureOnPage[Groundwater]], terrain_elevation: Decimal | None, layers: list[Layer]
+    ) -> list[FeatureOnPage[Groundwater]]:
         """Merges compatible candidates, removes duplicates, and sets the depth/elevation of all entries.
 
         Args:
-            terrain_elevation (float): The elevation of the terrain at the top of the borehole.
+            features (list[FeatureOnPage[Groundwater]]): The extracted groundwater levels.
+            terrain_elevation (Decimal | None): The elevation of the terrain at the top of the borehole.
             layers (list[Layer]): The list of layers in the borehole.
         """
-        for entry in self.features:
+        for entry in features:
             entry.feature.infer_infos(terrain_elevation, layers, entry.rect)
-        self.merge_compatible_candidates()
-        self.remove_overlaps()
+        features = GroundwatersInBorehole.merge_compatible_candidates(features)
+        features = GroundwatersInBorehole.remove_overlaps(features)
+        features = GroundwatersInBorehole.sort_groundwater(features)
+        return features
+
+    @staticmethod
+    def _group_by_page(features: list[FeatureOnPage[Groundwater]]) -> dict[int, list[FeatureOnPage[Groundwater]]]:
+        """Group groundwater features by their page number, preserving order within each page."""
+        pages: dict[int, list[FeatureOnPage[Groundwater]]] = defaultdict(list)
+        for feature in features:
+            pages[feature.page_number].append(feature)
+        return pages

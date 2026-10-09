@@ -186,7 +186,7 @@ def assign_page_metadata(extracted_boreholes: list[ExtractedBorehole], candidate
         borehole.metadata.name = borehole.metadata.name or name_by_borehole.get(index)
         borehole.metadata.elevation = borehole.metadata.elevation or elevation_by_borehole.get(index)
         borehole.metadata.coordinates = borehole.metadata.coordinates or coordinate_by_borehole.get(index)
-        borehole.groundwater.features.extend(groundwater_by_borehole.get(index, []))
+        borehole.groundwater.extend(groundwater_by_borehole.get(index, []))
 
 
 @dataclass
@@ -233,11 +233,11 @@ def build_borehole_predictions(extracted_boreholes: list[ExtractedBorehole]) -> 
     """
     return [
         BoreholePredictions(
-            borehole_index,
-            borehole.predictions,
-            borehole.metadata,
-            borehole.groundwater,
-            borehole.bounding_boxes,
+            borehole_index=borehole_index,
+            layers=borehole.predictions,
+            metadata=borehole.metadata,
+            groundwater=borehole.groundwater,
+            bounding_boxes=borehole.bounding_boxes,
         )
         for borehole_index, borehole in enumerate(extracted_boreholes)
     ]

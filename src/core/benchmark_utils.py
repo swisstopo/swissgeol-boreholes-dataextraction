@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from glob import glob
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
@@ -88,14 +88,14 @@ class BenchmarkSummary(BaseModel, ABC):
         """Return metrics in a flattened form for summaries/CSV output."""
 
 
-@dataclass(frozen=True)
-class Metrics:
+class Metrics(BaseModel):
     """Metrics for the evaluation of extracted features (e.g., Groundwater, Elevation, Coordinates)."""
 
     tp: int = 0
     fp: int = 0
     fn: int = 0
 
+    @computed_field
     @property
     def precision(self) -> float:
         """Calculates the precision.
@@ -105,6 +105,7 @@ class Metrics:
         """
         return self.tp / (self.tp + self.fp) if self.tp + self.fp > 0 else 0
 
+    @computed_field
     @property
     def recall(self) -> float:
         """Calculates the recall.
@@ -114,6 +115,7 @@ class Metrics:
         """
         return self.tp / (self.tp + self.fn) if self.tp + self.fn > 0 else 0
 
+    @computed_field
     @property
     def f1(self) -> float:
         """Calculates the F1 score.
@@ -124,37 +126,6 @@ class Metrics:
         precision = self.precision
         recall = self.recall
         return 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
-
-    def to_json(self) -> dict[str, float]:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict[str, float]: The object as a dictionary.
-        """
-        return {
-            "tp": self.tp,
-            "fp": self.fp,
-            "fn": self.fn,
-            "precision": self.precision,
-            "recall": self.recall,
-            "f1": self.f1,
-        }
-
-    @classmethod
-    def from_json(cls, json: dict) -> Metrics:
-        """Construct a Metrics instance from a dictionary produced by `to_json`.
-
-        Args:
-            json (dict): Dictionary with keys tp, fp, and fn.
-
-        Returns:
-            Metrics: The reconstructed metrics object.
-        """
-        return Metrics(
-            tp=json["tp"],
-            fp=json["fp"],
-            fn=json["fn"],
-        )
 
     # TODO: Currently, some other methods for averaging metrics are in the OverallMetrics class.
     # On the long run, we should refactor this to have a single place where these averaging computations are

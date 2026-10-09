@@ -1,5 +1,7 @@
 """Test suite for the find_depth_columns module."""
 
+from decimal import Decimal
+
 import pymupdf
 import pytest
 
@@ -14,20 +16,23 @@ from extraction.features.stratigraphy.sidebarentry.depth_column_entry import Dep
 @pytest.mark.parametrize(
     "input,expected",
     [
-        (["1", "1.05", "2", "3", "4", "5.78", "6"], [1, 2, 3, 4]),
-        (["10", "20", "30", "40", "50"], [10, 20, 30, 40, 50]),
-        (["5", "10", "15", "20", "25", "30.5", "40.7"], [5, 10, 15, 20, 25]),
+        (["1", "1.05", "2", "3", "4", "5.78", "6"], ["1", "2", "3", "4"]),
+        (["10", "20", "30", "40", "50"], ["10", "20", "30", "40", "50"]),
+        (["5", "10", "15", "20", "25", "30.5", "40.7"], ["5", "10", "15", "20", "25"]),
         (["3", "7", "12", "20"], []),
         (["10"], []),
-        (["1.1", "2.2", "3.3", "4.4"], [1.1, 2.2, 3.3, 4.4]),
+        (["1.1", "2.2", "3.3", "4.4"], ["1.1", "2.2", "3.3", "4.4"]),
         (
             ["8", "16", "20", "24", "28", "52", "56", "60", "72", "88", "92", "100"],
             [],
         ),
-        (["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "20"], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+        (
+            ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "20"],
+            ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+        ),
         (["0.8", "2.4", "4.0"], []),
-        (["0.2", "0.3", "0.4"], [0.2, 0.3, 0.4]),
-        (["2", "4", "6", "8", "12"], [2, 4, 6, 8]),
+        (["0.2", "0.3", "0.4"], ["0.2", "0.3", "0.4"]),
+        (["2", "4", "6", "8", "12"], ["2", "4", "6", "8"]),
         (
             [
                 "0",
@@ -51,15 +56,14 @@ from extraction.features.stratigraphy.sidebarentry.depth_column_entry import Dep
                 "9",
                 "10",
             ],
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
         ),  # inspired by 268124125-bp.pdf
     ],
 )
 def test_aabovebsidebar_arithmeticprogressionentries(input, expected):  # noqa: D103
     """Test the _arithmetic_progression_entries method of the AAboveBSidebarExtractor class."""
-    entries = [
-        DepthColumnEntry.from_string_value(pymupdf.Rect(), string_value=value, page_number=0) for value in input
-    ]
+    entries = [DepthColumnEntry(value=Decimal(value), rect=pymupdf.Rect(), page_number=0) for value in input]
+    expected = [Decimal(value) for value in expected]
     result = [entry.value for entry in AAboveBSidebarExtractor._arithmetic_progression_entries(entries)]
     assert result == expected, f"Expected {expected}, but got {result}"
 
@@ -75,69 +79,67 @@ def test_aabovebsidebar_arithmeticprogressionentries(input, expected):  # noqa: 
 )
 def test_aabovebsidebar_ascendingcount(input, expected):
     """Test the ascending_count method of the AAboveBSidebar class."""
-    entries = [DepthColumnEntry(value=value, rect=pymupdf.Rect(), page_number=0) for value in input]
+    entries = [DepthColumnEntry(value=Decimal(value), rect=pymupdf.Rect(), page_number=0) for value in input]
     assert AAboveBSidebar(entries).ascending_count() == expected
 
 
 def test_aabovebsidebar_fixocrmistakes():  # noqa: D103
     """Test the fix_ocr_mistakes method of the AAboveBSidebar class."""
 
-    def run_test(in_values: list[float], out_values: list[float], has_decimal_point: list[bool] = None) -> None:
-        if not has_decimal_point:
-            has_decimal_point = [False] * len(in_values)
-
+    def run_test(in_values: list[str], out_values: list[str]) -> None:
+        in_values = [Decimal(value) for value in in_values]
+        out_values = [Decimal(value) for value in out_values]
         sidebar = AAboveBSidebar(
             [
                 # TODO: actually specify the y-coordinate instead of using the index as a proxy
                 DepthColumnEntry(
                     rect=pymupdf.Rect(0, index, 0, index),
-                    has_decimal_point=decimal,
                     value=value,
                     page_number=0,
                 )
-                for index, (value, decimal) in enumerate(zip(in_values, has_decimal_point, strict=True))
+                for index, value in enumerate(in_values)
             ]
         )
         result = [entry.value for entry in sidebar.fix_ocr_mistakes().entries]
         assert result == out_values, f"Expected {out_values}, but got {result}"
 
     # Basic transformation for values greater than the median, correct by factor 100
-    run_test([1.0, 200.0, 3.0], [1.0, 2.0, 3.0])
-    run_test([100.0, 2.0, 3.0], [1.0, 2.0, 3.0])
-    run_test([1.0, 2.0, 300.0], [1.0, 2.0, 3.0])
+    run_test(["1.00", "200", "3.00"], ["1.0", "2.0", "3.0"])
+    run_test(["100", "2.00", "3.00"], ["1.0", "2.0", "3.0"])
+    run_test(["1.00", "2.00", "300"], ["1.0", "2.0", "3.0"])
 
     # Basic transformation for values greater than the median, correct by factor 10
-    run_test([1.0, 20.0, 300.0], [1.0, 20.0, 30.0])
-    run_test([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 100.0], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 10.0])
-    run_test([100.0, 200.0, 300.0], [100.0, 200.0, 300.0])
+    run_test(["1.0", "20.0", "300"], ["1.0", "20.0", "30.0"])
+    run_test(["1.0", "2.0", "3.0", "4.0", "5.0", "6.0", "100"], ["1.0", "2.0", "3.0", "4.0", "5.0", "6.0", "10.0"])
+    run_test(["100", "200", "300"], ["100.0", "200.0", "300.0"])
 
     # ensure a "noise" value "0.0" does not influence the result
-    run_test([1.0, 2.0, 3.0, 0.0, 4.0], [1.0, 2.0, 3.0, 0.0, 4.0])
+    run_test(["1.0", "2.0", "3.0", "0.0", "4.0"], ["1.0", "2.0", "3.0", "0.0", "4.0"])
 
-    # always preserve the inputs if they are already look good
-    run_test([0.0, 0.1, 0.5, 6.0, 8.5, 10.0], [0.0, 0.1, 0.5, 6.0, 8.5, 10.0])
+    # always preserve the inputs if they already look good
+    run_test(["0.0", "0.1", "0.5", "6.0", "8.5", "10"], ["0.0", "0.1", "0.5", "6.0", "8.5", "10.0"])
 
     # Test case for A11429
-    run_test([558.4, 0.25, 230.0, 4.3, 12.04, 18268.0], [558.4, 0.25, 2.30, 4.3, 12.04, 1826.8])
+    run_test(["558.4", "0.25", "230", "4.30", "12.04", "18268"], ["558.4", "0.25", "2.30", "4.3", "12.04", "1826.8"])
 
     # Test case for 267125358-bp.pdf (two boreholes in one column )
     run_test(
-        [0.3, 1.0, 1.6, 1.9, 2.4, 3.2, 0.2, 0.4, 1.3, 2.3, 3.0],
-        [0.3, 1.0, 1.6, 1.9, 2.4, 3.2, 0.2, 0.4, 1.3, 2.3, 3.0],
+        ["0.3", "1.0", "1.6", "1.9", "2.4", "3.2", "0.2", "0.4", "1.3", "2.3", "3.0"],
+        ["0.3", "1.0", "1.6", "1.9", "2.4", "3.2", "0.2", "0.4", "1.3", "2.3", "3.0"],
     )
 
     # Test case for A7229.pdf
     run_test(
-        [0.0, 60.0, 90.0, 1.2, 140.0, 1.8, 2.9, 3.8, 720.0, 730.0], [0.0, 0.6, 0.9, 1.2, 1.4, 1.8, 2.9, 3.8, 7.2, 7.3]
+        ["0.00", "060", "090", "1.20", "140", "1.80", "2.90", "3.80", "720", "730"],
+        ["0.0", "0.6", "0.9", "1.2", "1.4", "1.8", "2.9", "3.8", "7.2", "7.3"],
     )
 
     # edge case
     run_test([], [])
 
-    # Test decimal point for 383_Schlatt_Gishalden_KB1 (if decimal detected, not rescaled)
-    run_test([1.0, 2.0, 30.0, 4.0], [1.0, 2.0, 3.0, 4.0], has_decimal_point=[False, False, False, False])
-    run_test([1.0, 2.0, 30.0, 4.0], [1.0, 2.0, 3.0, 4.0], has_decimal_point=[True, True, False, True])
-    run_test([1.0, 2.0, 30.0, 4.0], [1.0, 2.0, 30.0, 4.0], has_decimal_point=[False, False, True, False])
+    # Test decimal point for "383"_Schlatt_Gishalden_KB1 (if decimal detected, not rescaled)
+    run_test(["1.0", "2.0", "30.0", "4.0"], ["1.0", "2.0", "30.0", "4.0"])
+    run_test(["1.0", "2.0", "30", "4.0"], ["1.0", "2.0", "3.0", "4.0"])
 
 
 def test_generate_alternatives():

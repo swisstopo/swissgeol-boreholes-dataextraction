@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from decimal import Decimal
 
 import pymupdf
 import regex
+from pydantic import BaseModel, model_serializer, model_validator
 
+from extraction.utils.json import JsonFloatDecimal
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.utils.data_extractor import (
@@ -21,11 +23,10 @@ logger = logging.getLogger(__name__)
 COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,3})?(\d{3})[\.\s'‘’]{0,3}(\d{3})(?:\.(\d{1,}))?"
 
 
-@dataclass(kw_only=True)
-class CoordinateEntry:
+class CoordinateEntry(BaseModel):
     """Dataclass to represent a coordinate entry."""
 
-    coordinate_value: float
+    coordinate_value: JsonFloatDecimal
 
     def __repr__(self):
         if self.coordinate_value > 1e5:
@@ -34,41 +35,59 @@ class CoordinateEntry:
             return f"{self.coordinate_value:07,}".replace(",", "'")
 
 
-@dataclass(kw_only=True)
 class Coordinate(ExtractedFeature):
     """Abstract class for coordinates."""
 
     east: CoordinateEntry
     north: CoordinateEntry
 
-    def __post_init__(self):
+    @model_validator(mode="after")
+    def run_post_init(self):
         # east always greater than north by definition. Irrespective of the leading 1 or 2
         if self.east.coordinate_value < self.north.coordinate_value:
             logger.info("Swapping coordinates.")
             self.north, self.east = self.east, self.north
+        return self
 
     def __str__(self):
         return f"E: {self.east.coordinate_value}, N: {self.north.coordinate_value}"
 
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
+    @model_validator(mode="before")
+    @classmethod
+    def parse_flat_json(cls, data: dict) -> dict:
+        if isinstance(data, dict) and ("E" in data or "N" in data):
+            # 1. Extract "E" and "N" if present and nest them for Pydantic
+            # We mutate a copy or build upon the incoming dict to preserve other fields
+            data = data.copy()
+            data["east"] = {"coordinate_value": data.pop("E", None)}
+            data["north"] = {"coordinate_value": data.pop("N", None)}
+        return data
 
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "E": self.east.coordinate_value,
-            "N": self.north.coordinate_value,
-            "is_correct": self.is_correct,
+    @model_serializer(mode="wrap")
+    def serialize_flat_json(self, handler) -> dict:
+        # 1. Let Pydantic serialize everything normally first
+        serialized_dict = handler(self)
+
+        # 2. Extract the standard nested objects
+        east_data = serialized_dict.pop("east", {})
+        north_data = serialized_dict.pop("north", {})
+
+        # 3. Flatten them into "E" and "N" while leaving other fields untouched
+        serialized_dict = {
+            "E": east_data.get("coordinate_value"),
+            "N": north_data.get("coordinate_value"),
+            **serialized_dict,
         }
 
+        return serialized_dict
+
     @staticmethod
-    def from_values(east: float, north: float, is_correct: bool | None = None) -> Coordinate | None:
+    def from_values(east: Decimal, north: Decimal, is_correct: bool | None = None) -> Coordinate | None:
         """Creates a Coordinate object from the given values.
 
         Args:
-            east (float): The east coordinate value.
-            north (float): The north coordinate value.
+            east (Decimal): The east coordinate value.
+            north (Decimal): The north coordinate value.
             is_correct (bool): Indicate if the coordinates are properly detected.
 
         Returns:
@@ -90,20 +109,7 @@ class Coordinate(ExtractedFeature):
             logger.warning("Invalid coordinates format. Got E: %s, N: %s", east, north)
             return None
 
-    @classmethod
-    def from_json(cls, input: dict) -> Coordinate:
-        """Converts a dictionary to a Coordinate object.
 
-        Args:
-            input (dict): A dictionary containing the coordinate information.
-
-        Returns:
-            Coordinate: The coordinate object.
-        """
-        return Coordinate.from_values(east=input["E"], north=input["N"], is_correct=input.get("is_correct"))
-
-
-@dataclass
 class LV95Coordinate(Coordinate):
     """Dataclass to represent a coordinate in the LV95 format."""
 
@@ -114,7 +120,6 @@ class LV95Coordinate(Coordinate):
         )
 
 
-@dataclass
 class LV03Coordinate(Coordinate):
     """Dataclass to represent a coordinate in the LV03 format."""
 
@@ -137,12 +142,14 @@ class CoordinateExtractor(DataExtractor):
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " "}
 
-    def get_coordinates_with_x_y_labels(self, lines: list[TextLine], page: int) -> list[FeatureOnPage[Coordinate]]:
+    def get_coordinates_with_x_y_labels(
+        self, lines: list[TextLine], page_number: int
+    ) -> list[FeatureOnPage[Coordinate]]:
         """Find coordinates with explicit "X" and "Y" labels from the text lines.
 
         Args:
             lines (list[TextLine]): all the lines of text to search in
-            page (int): the page number (1-based) of the PDF document
+            page_number (int): the page number (1-based) of the PDF document
 
         Returns:
             list[FeatureOnPage[Coordinate]]: all found coordinates
@@ -165,10 +172,11 @@ class CoordinateExtractor(DataExtractor):
             rect.include_rect(x_match[1])
             rect.include_rect(y_match[1])
             coordinates = Coordinate.from_values(
-                east=int("".join(x_match[0].groups(default=""))), north=int("".join(y_match[0].groups(default="")))
+                east=Decimal("".join(x_match[0].groups(default=""))),
+                north=Decimal("".join(y_match[0].groups(default=""))),
             )
             if coordinates is not None and coordinates.is_valid():
-                found_coordinates.append(FeatureOnPage(feature=coordinates, rect=rect, page=page))
+                found_coordinates.append(FeatureOnPage(feature=coordinates, rect=rect, page_number=page_number))
         return found_coordinates
 
     def get_coordinates_near_key(self, lines: list[TextLine], page: int) -> list[FeatureOnPage[Coordinate]]:
@@ -237,10 +245,12 @@ class CoordinateExtractor(DataExtractor):
         potential_coordinates = [
             FeatureOnPage(
                 feature=Coordinate.from_values(
-                    east=float("{}.{}".format("".join(match.groups(default="")[:3]), match.groups(default="")[3])),
-                    north=float("{}.{}".format("".join(match.groups(default="")[4:-1]), match.groups(default="")[-1])),
+                    east=Decimal("{}.{}".format("".join(match.groups(default="")[:3]), match.groups(default="")[3])),
+                    north=Decimal(
+                        "{}.{}".format("".join(match.groups(default="")[4:-1]), match.groups(default="")[-1])
+                    ),
                 ),
-                page=page,
+                page_number=page,
                 rect=rect,
             )
             for match, rect in CoordinateExtractor._match_text_with_rect(lines, full_regex, self.preprocess)

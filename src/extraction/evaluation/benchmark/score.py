@@ -73,7 +73,12 @@ def evaluate_prediction(
 
         # Set GT language and aggregate metrics into a single entity
         metrics = FilePredictionsMetrics(
-            matched_with_gt.language, layer_metrics, depth_metrics, material_metrics, gw_metrics, metadata_metrics
+            language=matched_with_gt.language,
+            layer_metrics=layer_metrics,
+            depth_interval_metrics=depth_metrics,
+            material_description_metrics=material_metrics,
+            gw_metrics=gw_metrics,
+            metadata_metrics=metadata_metrics,
         )
 
     return FilePredictionsWithMetrics(
@@ -143,9 +148,7 @@ def main():
 
     # Load the predictions
     try:
-        with open(args.predictions_path, encoding="utf8") as file:
-            predictions = json.load(file)
-        predictions = OverallFilePredictions.from_json(predictions)
+        predictions = OverallFilePredictions.model_validate_json(args.predictions_path.read_text())
     except FileNotFoundError:
         logger.error("Predictions file not found: %s", args.predictions_path)
         return

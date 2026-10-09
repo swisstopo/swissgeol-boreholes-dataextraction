@@ -1,11 +1,11 @@
 """This module contains functionality for detecting when a single borehole continues across pdf pages."""
 
 import dataclasses
+from decimal import Decimal
 
 import numpy as np
 
 from extraction.features.extracted_borehole import ExtractedBorehole
-from extraction.features.groundwater.groundwater import GroundwatersInBorehole
 from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
 from extraction.features.stratigraphy.layer.overlap_detection import (
@@ -114,8 +114,7 @@ def _reconcile_duplicated_boundary_layer(previous_layer: Layer, current_layer: L
     ):
         return None
 
-    return dataclasses.replace(
-        previous_layer,
+    return Layer(
         material_description=MaterialDescription(
             text=previous_layer.material_description.text,
             lines=previous_layer.material_description.lines + current_layer.material_description.lines,
@@ -346,7 +345,9 @@ def _is_continuation(
         bool: True if the current borehole is the continuation of the previous borehole, False otherwise.
     """
     ok_prev_layers = [lay for lay in borehole_to_extend.predictions if lay.depths is not None]
-    prev_depths = [d.value for lay in ok_prev_layers for d in (lay.depths.start, lay.depths.end) if d is not None]
+    prev_depths = [
+        float(d.value) for lay in ok_prev_layers for d in (lay.depths.start, lay.depths.end) if d is not None
+    ]
 
     ok_layers = [lay for lay in borehole_continuation.predictions if lay.depths is not None]
     depths = [d.value for lay in ok_layers for d in (lay.depths.start, lay.depths.end) if d is not None]
@@ -403,9 +404,7 @@ def _merge_boreholes(
         predictions=new_predictions,
         bounding_boxes=borehole_to_extend.bounding_boxes + borehole_continuation.bounding_boxes,
         metadata=_merge_metadata(borehole_to_extend.metadata, borehole_continuation.metadata),
-        groundwater=GroundwatersInBorehole(
-            borehole_to_extend.groundwater.features + borehole_continuation.groundwater.features
-        ),
+        groundwater=borehole_to_extend.groundwater + borehole_continuation.groundwater,
     )
 
 
@@ -450,4 +449,4 @@ def _normalize_first_layer(borehole: ExtractedBorehole):
         and borehole.predictions[0].depths.end is not None
     ):
         end_page = borehole.predictions[0].depths.end.page_number
-        borehole.predictions[0].depths.start = LayerDepthsEntry(0.0, None, end_page)
+        borehole.predictions[0].depths.start = LayerDepthsEntry(value=Decimal(0), rect=None, page_number=end_page)

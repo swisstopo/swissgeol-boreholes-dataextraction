@@ -4,92 +4,68 @@ This module defines the DataExtractor class for extracting data from stratigraph
 """
 
 import logging
-from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass
-from typing import Generic, Self, TypeVar
+from typing import Any, Generic, TypeVar
 
 import pymupdf
 import regex
+from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 
-from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
+from extraction.utils.json import JsonSerializableRect
 from swissgeol_doc_processing.text.textline import TextLine
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass(kw_only=True)
-class ExtractedFeature(metaclass=ABCMeta):
+class ExtractedFeature(BaseModel):
     """Class for extracted feature information."""
 
     is_correct: bool | None = None
 
-    @abstractmethod
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        pass
-
-    @classmethod
-    @abstractmethod
-    def from_json(cls, data: dict) -> Self:
-        """Converts a dictionary to an object.
-
-        Args:
-            data (dict): A dictionary representing the information.
-
-        Returns:
-            Self: An instance of the class.
-        """
-        pass
+    @model_serializer(mode="wrap")
+    def move_is_correct_end(self, handler) -> dict[str, Any]:
+        """Put the is_correct field at the end of the serialized object."""
+        data = handler(self)
+        value = data.pop("is_correct")
+        data["is_correct"] = value
+        return data
 
 
 T = TypeVar("T", bound=ExtractedFeature)
 
 
-class FeatureOnPage(Generic[T], RectWithPageMixin):
+class FeatureOnPage(BaseModel, Generic[T]):
     """Class for an extracted feature, together with the page and where on that page the feature was extracted from."""
 
-    def __init__(self, feature: T, rect: pymupdf.Rect, page: int):
-        self.feature = feature
-        self.rect_with_page = RectWithPage(rect, page)
+    model_config = ConfigDict(populate_by_name=True)
+
+    feature: T
+    page_number: int = Field(alias="page")
+    rect: JsonSerializableRect
 
     def __repr__(self):
         return f"{self.feature}"
 
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
+    @model_serializer(mode="wrap")
+    def serialize(self, handler) -> dict[str, Any]:
+        """Serialize with the feature's attributes flattened."""
+        serialized_self = handler(self)
+        feature = serialized_self.pop("feature")
+        return {**feature, **serialized_self}
 
-        Returns:
-            dict: The object as a dictionary.
-        """
-        result = self.feature.to_json()
-        result.update(
-            {
-                "page": self.page_number if self.page_number else None,
-                "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
-            }
-        )
-        return result
-
+    @model_validator(mode="before")
     @classmethod
-    def from_json(cls, data: dict, feature_cls: type[T]) -> Self:
-        """Converts a dictionary to an object.
+    def deserialize_flattened(cls, data: Any) -> Any:
+        """Serialize from a JSON object where feature's attributes were flattened."""
+        if not isinstance(data, dict) or "feature" in data:
+            return data
 
-        Args:
-            data (dict): A dictionary representing the feature on a page information.
-            feature_cls (T): The extracted feature
+        own_fields = {"page", "page_number", "rect"}
 
-        Returns:
-            Self: The resulting FeatureOnPage object.
-        """
-        return cls(
-            feature=feature_cls.from_json(data),
-            page=data["page"],
-            rect=pymupdf.Rect(data["rect"]),
-        )
+        return {
+            "feature": {k: v for k, v in data.items() if k not in own_fields},
+            "page": data["page"],
+            "rect": data["rect"],
+        }
 
 
 class DataExtractor:

@@ -9,6 +9,7 @@ as well as a patch version with all fields optional for patch operations.
 ########################################################################################################################
 
 from abc import ABC, abstractmethod
+from decimal import Decimal
 from enum import Enum, StrEnum
 from pathlib import Path
 from typing import Annotated
@@ -631,7 +632,7 @@ class BoreholeExtractionSchema(BaseModel):
     )
     # Future metadata fields (empty for now, prepared for future use)
     name: str | None = Field(default=None, description="Borehole name if detected.")
-    elevation: float | None = Field(default=None, description="Terrain elevation at borehole location in meters.")
+    elevation: Decimal | None = Field(default=None, description="Terrain elevation at borehole location in meters.")
     coordinates: Coordinates | None = Field(default=None, description="Geographic coordinates of the borehole.")
 
 

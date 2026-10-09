@@ -2,6 +2,7 @@
 
 import json
 import logging
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -50,8 +51,8 @@ class GroundTruthLayerDepth(BaseModel):
     """Depth interval of a borehole layer."""
 
     model_config = {"extra": "forbid"}
-    end: float | None = None
-    start: float | None = None
+    end: Decimal | None = None
+    start: Decimal | None = None
 
 
 class GroundTruthLayer(BaseModel):
@@ -69,8 +70,8 @@ class GroundTruthGroundwater(BaseModel):
 
     model_config = {"extra": "forbid"}
     date: str | None = None
-    depth: float
-    elevation: float
+    depth: Decimal
+    elevation: Decimal
 
 
 class GroundTruthCoordinates(BaseModel):
@@ -78,8 +79,8 @@ class GroundTruthCoordinates(BaseModel):
 
     model_config = {"extra": "forbid"}
 
-    E: float
-    N: float
+    E: Decimal
+    N: Decimal
 
 
 class GroundTruthMetadata(BaseModel):
@@ -93,7 +94,7 @@ class GroundTruthMetadata(BaseModel):
     drilling_methods: list[str] | None = None
     original_name: str | None = None
     project_name: str | None = None
-    reference_elevation: float | None = None
+    reference_elevation: Decimal | None = None
     total_depth: float | None = None
 
 
@@ -121,7 +122,7 @@ class GroundTruth:
 
         # Load the ground truth data
         with open(path, encoding="utf-8") as in_file:
-            ground_truth = json.load(in_file)
+            ground_truth = json.load(in_file, parse_float=Decimal)
 
         # Validate entries
         for filename, data in ground_truth.items():
