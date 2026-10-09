@@ -1,8 +1,6 @@
 """Classes for evaluating the groundwater levels of a borehole."""
 
-from dataclasses import dataclass
-
-from pydantic import ConfigDict
+from pydantic import BaseModel
 
 from core.benchmark_utils import Metrics
 from extraction.evaluation.utility import evaluate
@@ -10,11 +8,8 @@ from extraction.features.groundwater.groundwater_extraction import Groundwater
 from extraction.features.predictions.borehole_predictions import FileGroundwaterWithGroundTruth
 
 
-@dataclass
-class GroundwaterMetrics:
+class GroundwaterMetrics(BaseModel):
     """Class for storing the metrics of the groundwater information."""
-
-    model_config = ConfigDict(populate_by_name=True)
 
     groundwater_metrics: Metrics = Metrics()
     groundwater_depth_metrics: Metrics = Metrics()
