@@ -7,7 +7,6 @@ from decimal import Decimal
 
 import numpy as np
 import pymupdf
-from pydantic import BaseModel, Field, model_serializer
 from scipy.stats import pearsonr
 
 from extraction.features.stratigraphy.layer.layer import Layer
@@ -140,35 +139,23 @@ class Groundwater(ExtractedFeature):
         return depth
 
 
-def _group_by_page(
-    features: list[FeatureOnPage[Groundwater]],
-) -> dict[int, list[FeatureOnPage[Groundwater]]]:
-    """Group groundwater features by their page number, preserving order within each page."""
-    pages: dict[int, list[FeatureOnPage[Groundwater]]] = defaultdict(list)
-    for feature in features:
-        pages[feature.page_number].append(feature)
-    return pages
+class GroundwatersInBorehole:
+    """Class for postprocessing extracted groundwater information from a single borehole."""
 
-
-class GroundwatersInBorehole(BaseModel):
-    """Class for extracted groundwater information from a single borehole."""
-
-    features: list[FeatureOnPage[Groundwater]] = Field(default_factory=list)
-
-    @model_serializer(mode="wrap")
-    def serialize_as_sorted_list(self, handler) -> dict:
-        return handler(
-            sorted(
-                self.features,
-                key=lambda e: (
-                    e.feature.depth or 0,
-                    e.feature.date or datetime.date.min,
-                    e.feature.elevation or 0,
-                ),
-            )
+    @staticmethod
+    def sort_groundwater(features: list[FeatureOnPage[Groundwater]]) -> list[FeatureOnPage[Groundwater]]:
+        """Return the extracted groundwater features in a canonical order."""
+        return sorted(
+            features,
+            key=lambda e: (
+                e.feature.depth or 0,
+                e.feature.date or datetime.date.min,
+                e.feature.elevation or 0,
+            ),
         )
 
-    def merge_compatible_candidates(self):
+    @staticmethod
+    def merge_compatible_candidates(features: list[FeatureOnPage[Groundwater]]) -> list[FeatureOnPage[Groundwater]]:
         """Merges candidates that likely describe the same groundwater reading.
 
         Some documents mention one groundwater reading in more than one place, so different mentions of the
@@ -218,17 +205,18 @@ class GroundwatersInBorehole(BaseModel):
                     break
             return result
 
-        pages = _group_by_page(self.features)
+        pages = GroundwatersInBorehole._group_by_page(features)
 
-        self.features = [gw for page_candidates in pages.values() for gw in merge_page(page_candidates)]
+        return [gw for page_candidates in pages.values() for gw in merge_page(page_candidates)]
 
-    def remove_overlaps(self):
+    @staticmethod
+    def remove_overlaps(features: list[FeatureOnPage[Groundwater]]) -> list[FeatureOnPage[Groundwater]]:
         """Removes groundwater entries whose bounding box overlaps with another entry on the same page.
 
         When two entries' rects intersect, only the more compact one is kept, since the larger one likely
         just encloses unrelated neighboring text along with the actual reading.
         """
-        pages = _group_by_page(self.features)
+        pages = GroundwatersInBorehole._group_by_page(features)
 
         result: list[FeatureOnPage[Groundwater]] = []
         for page_candidates in pages.values():
@@ -247,16 +235,30 @@ class GroundwatersInBorehole(BaseModel):
                 if keep:
                     non_overlapping.append(gw)
             result.extend(non_overlapping)
-        self.features = result
+        return result
 
-    def filter_entries(self, terrain_elevation: Decimal | None, layers: list[Layer]):
+    @staticmethod
+    def filter_entries(
+        features: list[FeatureOnPage[Groundwater]], terrain_elevation: Decimal | None, layers: list[Layer]
+    ) -> list[FeatureOnPage[Groundwater]]:
         """Merges compatible candidates, removes duplicates, and sets the depth/elevation of all entries.
 
         Args:
+            features (list[FeatureOnPage[Groundwater]]): The extracted groundwater levels.
             terrain_elevation (Decimal | None): The elevation of the terrain at the top of the borehole.
             layers (list[Layer]): The list of layers in the borehole.
         """
-        for entry in self.features:
+        for entry in features:
             entry.feature.infer_infos(terrain_elevation, layers, entry.rect)
-        self.merge_compatible_candidates()
-        self.remove_overlaps()
+        features = GroundwatersInBorehole.merge_compatible_candidates(features)
+        features = GroundwatersInBorehole.remove_overlaps(features)
+        features = GroundwatersInBorehole.sort_groundwater(features)
+        return features
+
+    @staticmethod
+    def _group_by_page(features: list[FeatureOnPage[Groundwater]]) -> dict[int, list[FeatureOnPage[Groundwater]]]:
+        """Group groundwater features by their page number, preserving order within each page."""
+        pages: dict[int, list[FeatureOnPage[Groundwater]]] = defaultdict(list)
+        for feature in features:
+            pages[feature.page_number].append(feature)
+        return pages

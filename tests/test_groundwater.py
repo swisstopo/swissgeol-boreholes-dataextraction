@@ -99,7 +99,7 @@ def test_extract_elevation_ignores_millimeter_diameters():
 def test_evaluate_with_ground_truth(groundtruth, groundwater_at_2m22, groundwater_at_3m22):
     """Test the evaluate method with available ground truth data."""
     # In this test, there is one borehole, with two groundwater measurement for it.
-    groundwaterinborehole_list = [GroundwatersInBorehole(features=[groundwater_at_2m22, groundwater_at_3m22])]
+    extracted_groundwater = [[groundwater_at_2m22, groundwater_at_3m22]]
 
     # dictionary used to "manually" build the FileGroundwaterWithGroundTruth object
     filename = "example_borehole_profile.pdf"
@@ -110,10 +110,10 @@ def test_evaluate_with_ground_truth(groundtruth, groundwater_at_2m22, groundwate
             filename=filename,
             boreholes=[
                 BoreholeGroundwaterWithGroundTruth(
-                    groundwater=groundwaterinborehole,
+                    groundwater=groundwater,
                     ground_truth=groundtruth.for_file(filename)[pred_to_gt_matching[filename][pred_idx]].groundwater,
                 )
-                for pred_idx, groundwaterinborehole in enumerate(groundwaterinborehole_list)
+                for pred_idx, groundwater in enumerate(extracted_groundwater)
             ],
         )
     )
@@ -140,7 +140,7 @@ def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwat
             filename="example_borehole_profile.pdf",
             boreholes=[
                 BoreholeGroundwaterWithGroundTruth(
-                    groundwater=GroundwatersInBorehole(features=[groundwater_at_2m22, groundwater_at_3m22]),
+                    groundwater=[groundwater_at_2m22, groundwater_at_3m22],
                     ground_truth=groundtruth.for_file("example_borehole_profile.pdf")[
                         gt_matching_index_example[0]
                     ].groundwater,
@@ -153,13 +153,13 @@ def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwat
             filename="example_borehole_profile_2.pdf",
             boreholes=[
                 BoreholeGroundwaterWithGroundTruth(
-                    groundwater=GroundwatersInBorehole(features=[groundwater_at_2m22]),
+                    groundwater=[groundwater_at_2m22],
                     ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf")[
                         gt_matching_index_example_2[0]
                     ].groundwater,
                 ),
                 BoreholeGroundwaterWithGroundTruth(
-                    groundwater=GroundwatersInBorehole(features=[groundwater_at_3m22]),
+                    groundwater=[groundwater_at_3m22],
                     ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf")[
                         gt_matching_index_example_2[1]
                     ].groundwater,
@@ -187,13 +187,12 @@ def test_merge_compatible_candidates_merges_unique_pair():
     depth_only = _gw(depth=Decimal(5), rect=(0, 0, 1, 1))
     date_only = _gw(date_=date(2020, 3, 12), rect=(2, 2, 3, 3))
 
-    borehole = GroundwatersInBorehole(features=[depth_only, date_only])
-    borehole.merge_compatible_candidates()
+    result = GroundwatersInBorehole.merge_compatible_candidates([depth_only, date_only])
 
-    assert len(borehole.features) == 1
-    feature = borehole.features[0].feature
+    assert len(result) == 1
+    feature = result[0].feature
     assert (feature.depth, feature.date, feature.elevation) == (Decimal(5), date(2020, 3, 12), None)
-    assert borehole.features[0].rect == pymupdf.Rect(0, 0, 3, 3)
+    assert result[0].rect == pymupdf.Rect(0, 0, 3, 3)
 
 
 def test_merge_compatible_candidates_blocks_on_conflicting_field():
@@ -201,10 +200,8 @@ def test_merge_compatible_candidates_blocks_on_conflicting_field():
     a = _gw(depth=5.0, date_=date(2020, 3, 12))
     b = _gw(elevation=400.0, date_=date(2020, 1, 1))
 
-    borehole = GroundwatersInBorehole(features=[a, b])
-    borehole.merge_compatible_candidates()
-
-    assert len(borehole.features) == 2
+    result = GroundwatersInBorehole.merge_compatible_candidates([a, b])
+    assert len(result) == 2
 
 
 def test_merge_compatible_candidates_merges_mutually_compatible_group():
@@ -213,11 +210,10 @@ def test_merge_compatible_candidates_merges_mutually_compatible_group():
     date_only = _gw(date_=date(2020, 3, 12))
     elevation_only = _gw(elevation=400.0)
 
-    borehole = GroundwatersInBorehole(features=[depth_only, date_only, elevation_only])
-    borehole.merge_compatible_candidates()
+    result = GroundwatersInBorehole.merge_compatible_candidates([depth_only, date_only, elevation_only])
 
-    assert len(borehole.features) == 1
-    feature = borehole.features[0].feature
+    assert len(result) == 1
+    feature = result[0].feature
     assert (feature.depth, feature.date, feature.elevation) == (5.0, date(2020, 3, 12), 400.0)
 
 
@@ -227,10 +223,8 @@ def test_merge_compatible_candidates_leaves_pairwise_conflicting_group_unmerged(
     depth_9 = _gw(depth=9.0)
     depth_13 = _gw(depth=13.0)
 
-    borehole = GroundwatersInBorehole(features=[depth_5, depth_9, depth_13])
-    borehole.merge_compatible_candidates()
-
-    assert len(borehole.features) == 3
+    result = GroundwatersInBorehole.merge_compatible_candidates([depth_5, depth_9, depth_13])
+    assert len(result) == 3
 
 
 def test_merge_compatible_candidates_does_not_merge_across_pages():
@@ -238,7 +232,6 @@ def test_merge_compatible_candidates_does_not_merge_across_pages():
     depth_only = _gw(depth=5.0, page=1)
     date_only = _gw(date_=date(2020, 3, 12), page=2)
 
-    borehole = GroundwatersInBorehole(features=[depth_only, date_only])
-    borehole.merge_compatible_candidates()
+    result = GroundwatersInBorehole.merge_compatible_candidates([depth_only, date_only])
 
-    assert len(borehole.features) == 2
+    assert len(result) == 2

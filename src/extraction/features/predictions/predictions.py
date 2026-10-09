@@ -186,7 +186,7 @@ def assign_page_metadata(extracted_boreholes: list[ExtractedBorehole], candidate
         borehole.metadata.name = borehole.metadata.name or name_by_borehole.get(index)
         borehole.metadata.elevation = borehole.metadata.elevation or elevation_by_borehole.get(index)
         borehole.metadata.coordinates = borehole.metadata.coordinates or coordinate_by_borehole.get(index)
-        borehole.groundwater.features.extend(groundwater_by_borehole.get(index, []))
+        borehole.groundwater.extend(groundwater_by_borehole.get(index, []))
 
 
 @dataclass

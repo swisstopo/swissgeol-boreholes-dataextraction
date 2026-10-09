@@ -14,7 +14,7 @@ from extraction.evaluation.benchmark.metrics import OverallMetricsCatalog
 from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.evaluation.utility import evaluate, evaluate_single
 from extraction.features.extracted_borehole import ExtractedBorehole
-from extraction.features.groundwater.groundwater import Groundwater, GroundwatersInBorehole
+from extraction.features.groundwater.groundwater import Groundwater
 from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
 from extraction.features.metadata.metadata import BoreholeMetadata, FileMetadata, PageDimensions
@@ -63,12 +63,11 @@ def sample_file_prediction() -> FilePredictions:
     layers = [layer1, layer2]
 
     dt_date = datetime(2024, 10, 1)
-    groundwater_on_page = FeatureOnPage(
+    groundwater = FeatureOnPage(
         feature=Groundwater(depth=Decimal(100), date=dt_date, elevation=Decimal(20)),
         page_number=1,
         rect=pymupdf.Rect(0, 0, 100, 100),
     )
-    groundwater = GroundwatersInBorehole(features=[groundwater_on_page])
 
     file_metadata = FileMetadata(language="en", page_dimensions=[Mock(width=10, height=20)])
     # TODO adapt tests
@@ -80,7 +79,7 @@ def sample_file_prediction() -> FilePredictions:
                 borehole_index=0,
                 layers=layers,
                 metadata=metadata,
-                groundwater=groundwater,
+                groundwater=[groundwater],
                 bounding_boxes=[],
             )
         ],
@@ -137,12 +136,11 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     ]
 
     dt_date = datetime(2024, 10, 1)
-    groundwater_on_page = FeatureOnPage(
+    groundwater = FeatureOnPage(
         feature=Groundwater(depth=Decimal(100), date=dt_date, elevation=Decimal(20)),
         page_number=1,
         rect=pymupdf.Rect(0, 0, 100, 100),
     )
-    groundwater = GroundwatersInBorehole(features=[groundwater_on_page])
 
     file_metadata = FileMetadata(language="en", page_dimensions=[PageDimensions(width=10, height=20)])
     metadata = BoreholeMetadata(coordinates=coord, elevation=None, name=name)
@@ -153,14 +151,14 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
                 borehole_index=0,
                 layers=layers,
                 metadata=metadata,
-                groundwater=groundwater,
+                groundwater=[groundwater],
                 bounding_boxes=[],
             ),
             BoreholePredictions(
                 borehole_index=1,
                 layers=layers_2,
                 metadata=metadata,
-                groundwater=groundwater,
+                groundwater=[groundwater],
                 bounding_boxes=[],
             ),
         ],

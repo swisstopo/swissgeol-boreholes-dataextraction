@@ -98,7 +98,7 @@ class PageDrawer:
                 self.draw_feature(elevation.rect * self.page.derotation_matrix, elevation.feature.is_correct, "blue")
             if name is not None and self.page_number == name.page_number:
                 self.draw_feature(name.rect * self.page.derotation_matrix, name.feature.is_correct, "yellow")
-            for groundwater_entry in groundwaters.features:
+            for groundwater_entry in groundwaters:
                 if self.page_number == groundwater_entry.page_number:
                     self.draw_feature(
                         groundwater_entry.rect * self.page.derotation_matrix,

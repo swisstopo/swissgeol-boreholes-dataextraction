@@ -12,10 +12,11 @@ from core.ground_truth import (
     GroundTruthLayer,
     GroundTruthMetadata,
 )
-from extraction.features.groundwater.groundwater import GroundwatersInBorehole
+from extraction.features.groundwater.groundwater import Groundwater
 from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 
 class BoreholePredictions(BaseModel):
@@ -25,7 +26,7 @@ class BoreholePredictions(BaseModel):
     metadata: BoreholeMetadata
     layers: list[Layer]
     bounding_boxes: list[PageBoundingBoxes]
-    groundwater: GroundwatersInBorehole
+    groundwater: list[FeatureOnPage[Groundwater]]
 
     def to_csv(self) -> str:
         """Converts borehole layer data to CSV format.
@@ -82,7 +83,7 @@ class BoreholeLayersWithGroundTruth:
 class BoreholeGroundwaterWithGroundTruth:
     """Groundwater predictions for a specific borehole with associated ground truth."""
 
-    groundwater: GroundwatersInBorehole | None
+    groundwater: list[FeatureOnPage[Groundwater]] | None
     ground_truth: list[GroundTruthGroundwater] | None
 
 

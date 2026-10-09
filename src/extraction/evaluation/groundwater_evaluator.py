@@ -53,7 +53,7 @@ class GroundwaterEvaluator:
             ]
 
             entries = (
-                [feature_on_page.feature for feature_on_page in borehole_data.groundwater.features]
+                [feature_on_page.feature for feature_on_page in borehole_data.groundwater]
                 if borehole_data.groundwater
                 else []
             )

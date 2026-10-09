@@ -6,7 +6,6 @@ from decimal import Decimal
 import numpy as np
 
 from extraction.features.extracted_borehole import ExtractedBorehole
-from extraction.features.groundwater.groundwater import GroundwatersInBorehole
 from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
 from extraction.features.stratigraphy.layer.overlap_detection import (
@@ -405,9 +404,7 @@ def _merge_boreholes(
         predictions=new_predictions,
         bounding_boxes=borehole_to_extend.bounding_boxes + borehole_continuation.bounding_boxes,
         metadata=_merge_metadata(borehole_to_extend.metadata, borehole_continuation.metadata),
-        groundwater=GroundwatersInBorehole(
-            features=borehole_to_extend.groundwater.features + borehole_continuation.groundwater.features
-        ),
+        groundwater=borehole_to_extend.groundwater + borehole_continuation.groundwater,
     )
 
 

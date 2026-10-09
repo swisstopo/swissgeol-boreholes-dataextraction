@@ -36,7 +36,7 @@ T = TypeVar("T", bound=ExtractedFeature)
 class FeatureOnPage(BaseModel, Generic[T]):
     """Class for an extracted feature, together with the page and where on that page the feature was extracted from."""
 
-    feature: T = Field(exclude=True)
+    feature: T
     page_number: int = Field(serialization_alias="page")
     rect: JsonSerializableRect
 
@@ -47,7 +47,8 @@ class FeatureOnPage(BaseModel, Generic[T]):
     def serialize(self, handler) -> dict[str, Any]:
         """Serialize with the feature's attributes flattened."""
         serialized_self = handler(self)
-        return {**self.feature.model_dump(), **serialized_self}
+        feature = serialized_self.pop("feature")
+        return {**feature, **serialized_self}
 
 
 class DataExtractor:
