@@ -135,7 +135,6 @@ def evaluate_all_predictions(
             mlflow.log_artifact(Path(temp_directory) / "document_level_geology_metrics.csv")
 
     return ExtractionBenchmarkSummary(
-        ground_truth_path=str(ground_truth.path),
         n_documents=len(predictions.file_predictions_list),
         geology=geology_metrics_dict,
         metadata=metadata_metrics_dict,

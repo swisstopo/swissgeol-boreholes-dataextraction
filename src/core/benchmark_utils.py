@@ -80,7 +80,6 @@ def short_metric_key(k: str) -> str:
 class BenchmarkSummary(BaseModel, ABC):
     """Shared base class for benchmark summaries."""
 
-    ground_truth_path: str | None = None
     n_documents: int
 
     @abstractmethod
