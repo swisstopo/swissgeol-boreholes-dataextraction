@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, TypeAdapter, model_serializer
 
-from extraction.utils.json import JsonFloatDecimal
+from swissgeol_doc_processing.utils.json import JsonFloatDecimal
 
 logger = logging.getLogger(__name__)
 

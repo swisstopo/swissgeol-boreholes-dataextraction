@@ -10,8 +10,8 @@ import pymupdf
 import regex
 from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 
-from extraction.utils.json import JsonSerializableRect
 from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.json import JsonSerializableRect
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ import pymupdf
 from pydantic import BaseModel, ConfigDict, Field
 
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
-from extraction.utils.json import JsonSerializableRect
+from swissgeol_doc_processing.utils.json import JsonSerializableRect
 
 
 class PageBoundingBoxes(BaseModel):

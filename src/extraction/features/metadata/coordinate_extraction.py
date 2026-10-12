@@ -9,7 +9,6 @@ import pymupdf
 import regex
 from pydantic import BaseModel, model_serializer, model_validator
 
-from extraction.utils.json import JsonFloatDecimal
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.utils.data_extractor import (
@@ -17,6 +16,7 @@ from swissgeol_doc_processing.utils.data_extractor import (
     ExtractedFeature,
     FeatureOnPage,
 )
+from swissgeol_doc_processing.utils.json import JsonFloatDecimal
 
 logger = logging.getLogger(__name__)
 

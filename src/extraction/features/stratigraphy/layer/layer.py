@@ -4,10 +4,10 @@ import pymupdf
 from pydantic import BaseModel, ConfigDict, Field
 
 from extraction.features.stratigraphy.interval.interval import Interval
-from extraction.utils.json import JsonFloatDecimal, JsonSerializableRect
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature
 from swissgeol_doc_processing.utils.file_utils import parse_text
+from swissgeol_doc_processing.utils.json import JsonFloatDecimal, JsonSerializableRect
 
 
 class LayerDepthsEntry(BaseModel):

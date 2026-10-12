@@ -10,8 +10,8 @@ import pymupdf
 from scipy.stats import pearsonr
 
 from extraction.features.stratigraphy.layer.layer import Layer
-from extraction.utils.json import JsonFloatDecimal
 from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature, FeatureOnPage
+from swissgeol_doc_processing.utils.json import JsonFloatDecimal
 
 DATE_FORMAT = "%Y-%m-%d"
 
