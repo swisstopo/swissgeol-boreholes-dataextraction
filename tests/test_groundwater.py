@@ -51,7 +51,7 @@ def sample_metrics():
 @pytest.fixture
 def groundtruth():
     """Path to the ground truth file."""
-    return GroundTruth(Path("example/example_gw_groundtruth.json"))
+    return GroundTruth.from_path(Path("example/example_gw_groundtruth.json"))
 
 
 @pytest.fixture
