@@ -29,4 +29,6 @@ JsonSerializableRect = Annotated[
 ]
 
 
-JsonFloatDecimal = Annotated[Decimal, PlainValidator(Decimal), PlainSerializer(float, return_type=float)]
+JsonFloatDecimal = Annotated[
+    Decimal, PlainValidator(lambda float_value: Decimal(str(float_value))), PlainSerializer(float, return_type=float)
+]
