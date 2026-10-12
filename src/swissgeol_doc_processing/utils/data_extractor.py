@@ -63,7 +63,7 @@ class FeatureOnPage(BaseModel, Generic[T]):
 
         return {
             "feature": {k: v for k, v in data.items() if k not in own_fields},
-            "page": data["page"],
+            "page": data.get("page", data.get("page_number")),
             "rect": data["rect"],
         }
 
