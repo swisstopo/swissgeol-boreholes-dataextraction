@@ -69,7 +69,7 @@ def sample_file_prediction() -> FilePredictions:
         rect=pymupdf.Rect(0, 0, 100, 100),
     )
 
-    file_metadata = FileMetadata(language="en", page_dimensions=[Mock(width=10, height=20)])
+    file_metadata = FileMetadata(language="en", page_dimensions=[PageDimensions(width=10, height=20)])
     # TODO adapt tests
     metadata = BoreholeMetadata(coordinates=coord, elevation=None, name=name)
 
