@@ -158,7 +158,7 @@ def main():
 
     # Load ground truth
     try:
-        ground_truth = GroundTruth(args.ground_truth_path)
+        ground_truth = GroundTruth.from_path(args.ground_truth_path)
     except FileNotFoundError:
         logger.error("Ground truth file not found: %s", args.ground_truth_path)
         return

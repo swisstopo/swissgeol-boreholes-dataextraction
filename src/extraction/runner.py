@@ -131,7 +131,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
             [self.input_directory] if self.input_directory.is_file() else list(self.input_directory.glob("*.pdf"))
         )
         n_documents = len(pdf_files)
-        ground_truth = GroundTruth(self.ground_truth_path) if self.ground_truth_path else None
+        ground_truth = GroundTruth.from_path(self.ground_truth_path) if self.ground_truth_path else None
 
         # Load any partially-completed predictions for resume support
         predictions = read_json_predictions(predictions_path_tmp)
@@ -158,7 +158,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
         return PipelineRunResult(result=predictions, n_documents=n_documents)
 
     def evaluate(self, run_result: PipelineRunResult[OverallFilePredictions]) -> ExtractionBenchmarkSummary | None:
-        ground_truth = GroundTruth(self.ground_truth_path) if self.ground_truth_path else None
+        ground_truth = GroundTruth.from_path(self.ground_truth_path) if self.ground_truth_path else None
         eval_summary = evaluate_all_predictions(
             predictions=run_result.result,
             ground_truth=ground_truth,

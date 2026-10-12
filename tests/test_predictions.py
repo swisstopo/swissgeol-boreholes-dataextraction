@@ -170,13 +170,13 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
 @pytest.fixture
 def groundtruth():
     """Path to the ground truth file."""
-    return GroundTruth(Path("example/example_groundtruth.json"))
+    return GroundTruth.from_path(Path("example/example_groundtruth.json"))
 
 
 @pytest.fixture
 def groundtruth_with_two_boreholes():
     """Path to the ground truth file that has two boreholes."""
-    return GroundTruth(Path("example/example_layers_groundtruth.json"))
+    return GroundTruth.from_path(Path("example/example_layers_groundtruth.json"))
 
 
 def test_evaluate_layer_matching(

@@ -123,12 +123,12 @@ def enhance(ground_truth: Path, predictions_paths: tuple[Path, ...], output: Pat
     """
     output = output or ground_truth.parent / f"{ground_truth.stem}_enhanced{ground_truth.suffix}"
 
-    gt = GroundTruth(ground_truth)
+    gt = GroundTruth.from_path(ground_truth)
     for predictions_path in predictions_paths:
         _apply_predictions(gt, predictions_path)
 
-    with open(output, "w", encoding="utf-8") as f:
-        json.dump(gt.to_json(), f, ensure_ascii=False, indent=4)
+    with open(output, "w", encoding="utf-8") as file:
+        file.write(gt.model_dump_json(indent=4, by_alias=True))
 
     logger.info("Enhanced ground truth saved to %s.", output)
 
