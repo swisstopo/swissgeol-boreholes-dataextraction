@@ -64,7 +64,7 @@ def generate(prediction: Path, ground_truth: Path) -> None:
 
     # Write updated ground truth to file.
     with open(new_ground_truth, "w", encoding="utf8") as file:
-        file.write(gts.model_dump_json(indent=4, by_alias=True))
+        file.write(gts.model_dump_json(indent=4, by_alias=True, exclude_none=True))
 
     logger.info("Done.")
 
