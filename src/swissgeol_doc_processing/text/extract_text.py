@@ -5,7 +5,7 @@ import re
 
 import pymupdf
 
-from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textline import TextLine, TextWord, rect_union
 
 NUMBER_PATTERN = re.compile(r"^-?\d+([.,]\d+)?$")
 PUNCTUATION_PATTERN = re.compile(r"^[?%!><.,/\\-]+$")
@@ -47,18 +47,18 @@ def extract_text_lines_from_bbox(page: pymupdf.Page, bbox: pymupdf.Rect | None) 
                 words = []
                 for span in line["spans"]:
                     color = span.get("color")
-                    word_rect = pymupdf.Rect()
+                    char_rects = []
                     word_text = ""
                     for char in span["chars"]:
                         if char["c"] == " " and len(word_text) > 0:
-                            words.append(TextWord(word_rect, word_text, page.number + 1, color))
+                            words.append(TextWord(rect_union(char_rects), word_text, page.number + 1, color))
                             word_text = ""
-                            word_rect = pymupdf.Rect()
+                            char_rects = []
                         if char["c"] != " ":
                             word_text += char["c"]
-                            word_rect.include_rect(pymupdf.Rect(char["bbox"]) * page.rotation_matrix)
+                            char_rects.append(pymupdf.Rect(char["bbox"]) * page.rotation_matrix)
                     if len(word_text) > 0:
-                        words.append(TextWord(word_rect, word_text, page.number + 1, color))
+                        words.append(TextWord(rect_union(char_rects), word_text, page.number + 1, color))
 
                 lines.append(TextLine(words, text_angle))
 

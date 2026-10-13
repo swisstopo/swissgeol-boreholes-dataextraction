@@ -3,34 +3,6 @@
 import re
 
 
-def remove_scale(text: str) -> str:
-    """Remove scale notations from a text string.
-
-    The function identifies and removes map or drawing scale expressions that
-    start with an optional 'M' or 'M.', possibly followed by spaces, and ending
-    with '1:' and one to three digits (e.g., 'M. 1:100', 'M 1:50', '1:20').
-
-    Args:
-        text (str): Input text potentially containing scale expressions.
-
-    Returns:
-        str: The cleaned text with scale notations replaced by a single space.
-    """
-    return re.sub(r"(?:M\.?\s*)?1:\d{1,3}", "", text)
-
-
-def remove_in_parenthesis(text: str) -> str:
-    """Remove all text enclosed in parentheses, including the parentheses themselves.
-
-    Args:
-        text (str): Input text containing parenthetical expressions.
-
-    Returns:
-        str: The text with all parenthetical content removed and replaced by a space.
-    """
-    return re.sub(r"\(.*?\)", "", text)
-
-
 def normalize_spaces(text: str) -> str:
     """Normalize whitespace and remove leading/trailing spaces.
 
@@ -43,48 +15,6 @@ def normalize_spaces(text: str) -> str:
     cleaned = re.sub(r"\s+", " ", text)
     cleaned = cleaned.strip()
     return cleaned
-
-
-def match_any_keyword(
-    text: str,
-    keywords: list[str],
-    start: bool = False,
-    end: bool = False,
-    ignore_case: bool = False,
-    enforce_digit: bool = False,
-) -> re.Match | None:
-    """Search for the first occurrence of any keyword from a predefined list in a text.
-
-    Args:
-        text (str): The text to search within.
-        keywords (list[str]): A list of regex patterns to look for.
-        start (bool, optional): If True, the word must start with the keyword. Defaults to False.
-        end (bool, optional): If True, the word must end with the keyword. Defaults to False.
-        ignore_case (bool, optional): If True, keyword matching is case insensitive. Defaults to False.
-        enforce_digit (bool, optional): If True, keyword must be followed by at least one digit. Defaults to False.
-
-    Returns:
-        re.Match | None: The first match object found in the text, or None if no keyword is present.
-    """
-    # Build a regex pattern that matches keywords
-    if keywords is None or len(keywords) == 0:
-        return None
-
-    reg_start = "" if start else r"\w*"
-    reg_end = "" if end else r"\w*"
-    reg_enforce_digit = " ??\\d+" if enforce_digit else ""
-
-    pattern = (
-        r"\b"
-        + reg_start
-        + "(?:"
-        + "|".join(re.escape(kw) + reg_enforce_digit for kw in keywords)
-        + r")"
-        + reg_end
-        + r"\b"
-    )
-
-    return re.search(pattern, text, flags=re.IGNORECASE if ignore_case else re.NOFLAG)
 
 
 def remove_any_keyword(text: str, keywords: list[str]) -> str:
