@@ -92,17 +92,17 @@ def _many_to_one_match_element_to_borehole(
     )
 
 
-def _one_to_one_match_element_to_borehole(
+def _one_to_many_match_element_to_borehole(
     element_list: list[FeatureOnPage], boreholes: list[ExtractedBorehole]
 ) -> dict[int, FeatureOnPage | None]:
-    """Matches elements (e.g. elevation, coordinates) one-to-one to boreholes based on spatial position.
+    """Matches elements (e.g. elevation, coordinates) one-to-many to boreholes based on spatial position.
 
-    The algorithm ensures that each borehole is assigned exactly one element, resolving cases where
-    multiple elements might be close to a single borehole. It works iteratively by:
+    A single extracted element can be mapped to multiple boreholes, when it is the closest match for each of those
+    boreholes.
 
     1. Using a many-to-one matching heuristic to suggest possible element candidates per borehole.
-    2. Filtering out elements that have already been assigned.
-    3. Selecting the best candidate — defined as the topmost one on the page — if multiple are available.
+    2. Selecting the best candidate per borehole if multiple are available.
+    3. Repeat for boreholes that have no assigned element yet, until no more potential assignments are available.
 
     Args:
         element_list (list[FeatureOnPage]): List of extracted elements to match.
@@ -203,9 +203,9 @@ def assign_page_metadata(extracted_boreholes: list[ExtractedBorehole], candidate
         return
     elevation_entries = _remove_elevations_matching_groundwater(candidates.elevations, candidates.groundwater)
 
-    name_by_borehole = _one_to_one_match_element_to_borehole(candidates.names, extracted_boreholes)
-    elevation_by_borehole = _one_to_one_match_element_to_borehole(elevation_entries, extracted_boreholes)
-    coordinate_by_borehole = _one_to_one_match_element_to_borehole(candidates.coordinates, extracted_boreholes)
+    name_by_borehole = _one_to_many_match_element_to_borehole(candidates.names, extracted_boreholes)
+    elevation_by_borehole = _one_to_many_match_element_to_borehole(elevation_entries, extracted_boreholes)
+    coordinate_by_borehole = _one_to_many_match_element_to_borehole(candidates.coordinates, extracted_boreholes)
     groundwater_by_borehole = _many_to_one_match_element_to_borehole(
         candidates.groundwater, extracted_boreholes, _compute_distance
     )

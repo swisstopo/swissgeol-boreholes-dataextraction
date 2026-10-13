@@ -1,8 +1,14 @@
 """Unit tests for language-filtering utilities."""
 
 import pytest
+from pymupdf import pymupdf
 
-from extraction.features.metadata.borehole_name_extraction import _find_candidate_names, clean_borehole_name
+from extraction.features.metadata.borehole_name_extraction import (
+    _contract_words,
+    _find_candidate_names,
+    clean_borehole_name,
+)
+from swissgeol_doc_processing.text.textline import TextWord
 from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.language_filtering import (
     normalize_spaces,
@@ -130,3 +136,18 @@ def test_findcandidatename(text: str, expected: list[str], allow_simple: bool) -
     for start, end in _find_candidate_names(words, excluded_keywords, allow_simple):
         names.append(" ".join(words[start:end]))
     assert names == expected
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ["Bohrung 1 : 100", "Bohrung 1:100"],
+        ["Bohrung 1: 100", "Bohrung 1: 100"],
+        ["A - B - C", "A-B-C"],
+    ],
+)
+def test_contractwords(text: str, expected: str) -> None:
+    """Test borehole name extraction behavior."""
+    words = [TextWord(text=word, rect=pymupdf.Rect(), page_number=1) for word in text.split(" ")]
+    result = " ".join([word.text for word in _contract_words(words)])
+    assert result == expected

@@ -154,26 +154,7 @@ def _extract_borehole_names_from_line(
     if len(words) == 0:
         return []
 
-    # convert e.g. "1 : 100" to a single word "1:100" for more consistent behaviour
-    contracted_words = []
-    skip_next = False
-    for index, word in enumerate(words):
-        if word.text in {"-", ".", ":", "/"} and 0 < index < len(words) - 1:
-            previous_word = words[index - 1]
-            next_word = words[index + 1]
-            if previous_word.text[-1].isalnum() and next_word.text[0].isalnum():
-                new_rect = previous_word.rect | word.rect | next_word.rect
-                new_text = previous_word.text + word.text + next_word.text
-                new_word = TextWord(new_rect, new_text, word.page_number)
-                contracted_words[len(contracted_words) - 1] = new_word
-                skip_next = True
-        else:
-            if skip_next:
-                skip_next = False
-            else:
-                contracted_words.append(word)
-
-    words = contracted_words
+    words = _contract_words(words)
 
     first_word = words[0]
     if first_word.text.lower() in {"anhang", "allegato", "annexe"}:
@@ -267,6 +248,28 @@ def _extract_borehole_names_from_line(
             )
             continue
     return candidates
+
+
+def _contract_words(words: list[TextWord]) -> list[TextWord]:
+    # convert e.g. "1 : 100" to a single word "1:100" for more consistent behaviour
+    contracted_words = []
+    skip_next = False
+    for index, word in enumerate(words):
+        if word.text in {"-", ".", ":", "/"} and 0 < index < len(words) - 1:
+            previous_word = contracted_words[len(contracted_words) - 1]
+            next_word = words[index + 1]
+            if previous_word.text[-1].isalnum() and next_word.text[0].isalnum():
+                new_rect = previous_word.rect | word.rect | next_word.rect
+                new_text = previous_word.text + word.text + next_word.text
+                new_word = TextWord(new_rect, new_text, word.page_number)
+                contracted_words[len(contracted_words) - 1] = new_word
+                skip_next = True
+        else:
+            if skip_next:
+                skip_next = False
+            else:
+                contracted_words.append(word)
+    return contracted_words
 
 
 def _is_number_keyword(word: str, excluded_keywords: list[str]) -> bool:
