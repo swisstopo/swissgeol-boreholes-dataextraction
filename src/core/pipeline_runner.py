@@ -196,7 +196,6 @@ class MultiBenchmarkRunner(abc.ABC, Generic[SpecT, SummaryT]):
         for benchmark, summary in overall_results:
             row: dict[str, Any] = {"benchmark": benchmark}
             if summary is not None:
-                row["ground_truth_path"] = summary.ground_truth_path
                 row["n_documents"] = summary.n_documents
                 row.update(summary.metrics_flat())
             rows.append(row)

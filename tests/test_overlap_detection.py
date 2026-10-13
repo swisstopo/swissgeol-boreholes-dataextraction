@@ -1,5 +1,7 @@
 """Test suite for overlap detection."""
 
+from decimal import Decimal
+
 import pymupdf
 import pytest
 
@@ -17,8 +19,8 @@ def create_layer():
     """Create a Layer with given text."""
 
     def _create_layer(text: str) -> Layer:
-        line_feat = FeatureOnPage(MaterialDescriptionLine(text), rect=pymupdf.Rect, page=0)
-        material_description = MaterialDescription(text, [line_feat])
+        line_feat = FeatureOnPage(feature=MaterialDescriptionLine(text=text), rect=pymupdf.Rect(), page_number=0)
+        material_description = MaterialDescription(text=text, lines=[line_feat])
         return Layer(material_description=material_description, depths=None)
 
     return _create_layer
@@ -28,12 +30,16 @@ def create_layer():
 def create_elevation_layer():
     """Create a Layer with given text and depth interval."""
 
-    def _create_elevation_layer(text: str, elevation: tuple[float | None, float | None]) -> Layer:
-        line_feat = FeatureOnPage(MaterialDescriptionLine(text), rect=pymupdf.Rect(), page=0)
-        material_description = MaterialDescription(text, [line_feat])
+    def _create_elevation_layer(text: str, elevation: tuple[Decimal | None, Decimal | None]) -> Layer:
+        line_feat = FeatureOnPage(feature=MaterialDescriptionLine(text=text), rect=pymupdf.Rect(), page_number=0)
+        material_description = MaterialDescription(text=text, lines=[line_feat])
         depths = LayerDepths(
-            LayerDepthsEntry(elevation[0], rect=pymupdf.Rect(), page_number=0) if elevation[0] is not None else None,
-            LayerDepthsEntry(elevation[1], rect=pymupdf.Rect(), page_number=0) if elevation[1] is not None else None,
+            start=LayerDepthsEntry(value=elevation[0], rect=pymupdf.Rect(), page_number=0)
+            if elevation[0] is not None
+            else None,
+            end=LayerDepthsEntry(value=elevation[1], rect=pymupdf.Rect(), page_number=0)
+            if elevation[1] is not None
+            else None,
         )
         return Layer(material_description=material_description, depths=depths)
 

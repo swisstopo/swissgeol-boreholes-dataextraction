@@ -2,10 +2,11 @@
 
 from dataclasses import dataclass, field
 
-from extraction.features.groundwater.groundwater import GroundwatersInBorehole
+from extraction.features.groundwater.groundwater import Groundwater, GroundwatersInBorehole
 from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 
 @dataclass
@@ -18,7 +19,7 @@ class ExtractedBorehole:
     # forward across continuation merges (see `_merge_boreholes`)
     metadata: BoreholeMetadata = field(default_factory=BoreholeMetadata)
     # many-to-one, unlike metadata above: a borehole can have several groundwater readings
-    groundwater: GroundwatersInBorehole = field(default_factory=GroundwatersInBorehole)
+    groundwater: list[FeatureOnPage[Groundwater]] = field(default_factory=list)
 
     def post_processing(self):
         """Finalize the extracted borehole after extraction and matching is complete."""
@@ -28,7 +29,9 @@ class ExtractedBorehole:
 
         # Infer missing depths and elevation of groundwater and remove duplicated groundwater
         borehole_terrain_elevation = self.metadata.elevation.feature.elevation if self.metadata.elevation else None
-        self.groundwater.filter_entries(borehole_terrain_elevation, self.predictions)
+        self.groundwater = GroundwatersInBorehole.filter_entries(
+            self.groundwater, borehole_terrain_elevation, self.predictions
+        )
 
     @property
     def _reference_line_width(self) -> float | None:

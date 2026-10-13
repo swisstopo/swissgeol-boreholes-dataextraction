@@ -4,41 +4,29 @@ import csv
 import dataclasses
 import io
 
+from pydantic import BaseModel
+
 from core.ground_truth import (
     GroundTruthBorehole,
     GroundTruthGroundwater,
     GroundTruthLayer,
     GroundTruthMetadata,
 )
-from extraction.features.groundwater.groundwater import GroundwatersInBorehole
+from extraction.features.groundwater.groundwater import Groundwater
 from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 
-@dataclasses.dataclass
-class BoreholePredictions:
+class BoreholePredictions(BaseModel):
     """Class that hold predicted information about a single borehole."""
 
     borehole_index: int
-    layers: list[Layer]
     metadata: BoreholeMetadata
-    groundwater_in_borehole: GroundwatersInBorehole
+    layers: list[Layer]
     bounding_boxes: list[PageBoundingBoxes]
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "borehole_index": self.borehole_index,
-            "metadata": self.metadata.to_json(),
-            "layers": [layer.to_json() for layer in self.layers],
-            "bounding_boxes": [bboxes.to_json() for bboxes in self.bounding_boxes],
-            "groundwater": self.groundwater_in_borehole.to_json() if self.groundwater_in_borehole is not None else [],
-        }
+    groundwater: list[FeatureOnPage[Groundwater]]
 
     def to_csv(self) -> str:
         """Converts borehole layer data to CSV format.
@@ -69,29 +57,6 @@ class BoreholePredictions:
 
         return output.getvalue()
 
-    @classmethod
-    def from_json(cls, json_object) -> "BoreholePredictions":
-        """Extract a BoreholePrediction object from a json dictionary.
-
-        Args:
-            json_object (dict): the json object containing the informations of the borehole
-
-        Returns:
-            (BoreholePredictions): the extracted object
-        """
-        return cls(
-            json_object["borehole_index"],
-            [Layer.from_json(layer_json) for layer_json in json_object["layers"]],
-            BoreholeMetadata.from_json(json_object["metadata"]),
-            GroundwatersInBorehole.from_json(json_object["groundwater"]),
-            [PageBoundingBoxes.from_json(bbox_json) for bbox_json in json_object["bounding_boxes"]],
-        )
-
-    def filter_groundwater_entries(self):
-        """Sets the depth and elevation of the groundwater entries of this borehole."""
-        borehole_terrain_elevation = self.metadata.elevation.feature.elevation if self.metadata.elevation else None
-        self.groundwater_in_borehole.filter_entries(borehole_terrain_elevation, self.layers)
-
 
 @dataclasses.dataclass
 class BoreholePredictionsWithGroundTruth:
@@ -113,7 +78,7 @@ class BoreholeLayersWithGroundTruth:
 class BoreholeGroundwaterWithGroundTruth:
     """Groundwater predictions for a specific borehole with associated ground truth."""
 
-    groundwater: GroundwatersInBorehole | None
+    groundwater: list[FeatureOnPage[Groundwater]] | None
     ground_truth: list[GroundTruthGroundwater] | None
 
 

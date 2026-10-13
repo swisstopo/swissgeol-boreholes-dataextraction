@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 
 import pymupdf
+from pydantic import BaseModel
 
 from swissgeol_doc_processing.geometry.util import y_overlap_significant_smallest
 from swissgeol_doc_processing.text.textline import TextLine
@@ -19,19 +19,11 @@ from swissgeol_doc_processing.utils.language_filtering import (
 )
 
 
-@dataclass
-class BoreholeName(ExtractedFeature):
+class BoreholeName(ExtractedFeature, BaseModel):
     """Abstract class for Name Information."""
 
     name: str  # Name of the borehole
     confidence: float  # Confidence score based on distance
-
-    def __post_init__(self):
-        """Checks if the information is valid."""
-        if not isinstance(self.name, str):
-            raise ValueError("Name must be a string")
-        if not isinstance(self.confidence, float):
-            raise ValueError("Confidence must be a float")
 
     def __str__(self) -> str:
         """Converts the object to a string.
@@ -40,30 +32,6 @@ class BoreholeName(ExtractedFeature):
             str: The object as a string.
         """
         return f"Name(name={self.name}, confidence={self.confidence})"
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "name": self.name,
-            "confidence": self.confidence,
-            "is_correct": self.is_correct,
-        }
-
-    @classmethod
-    def from_json(cls, data: dict) -> BoreholeName:
-        """Converts a dictionary to an object.
-
-        Args:
-            data (dict): A dictionary representing the name information.
-
-        Returns:
-            BoreholeName: The borehole's name information object.
-        """
-        return cls(name=data["name"], confidence=data["confidence"], is_correct=data.get("is_correct"))
 
 
 def _find_closest_nearby_line(
@@ -210,7 +178,7 @@ def extract_borehole_names(
                 FeatureOnPage(
                     feature=BoreholeName(name=following_text_cleaned, confidence=1.0),
                     rect=line.rect,
-                    page=line.page_number,
+                    page_number=line.page_number,
                 )
             )
             continue
@@ -236,23 +204,22 @@ def extract_borehole_names(
                         max(line.rect.x1, hit_line.rect.x1),
                         max(line.rect.y1, hit_line.rect.y1),
                     ),
-                    page=line.page_number,
+                    page_number=line.page_number,
                 )
             )
 
     if not candidates:
         return []
 
-    # Remove entires where text is too long
+    # Remove entries where text is too long
     candidates = [
         candidate
         for candidate in candidates
         if _is_name_length_valid(candidate.feature.name, max_name_length, max_word_length)
     ]
 
-    # Sort unique candidates by highest confidence and height on the page
+    # Sort candidates by highest confidence and height on the page
     # TODO Use confidence for better matching
-    unique_candidates = list(set(candidates))
-    unique_candidates.sort(key=lambda bh_name: (bh_name.feature.confidence, -bh_name.rect.y0), reverse=True)
+    candidates.sort(key=lambda bh_name: (bh_name.feature.confidence, -bh_name.rect.y0), reverse=True)
 
-    return unique_candidates
+    return candidates

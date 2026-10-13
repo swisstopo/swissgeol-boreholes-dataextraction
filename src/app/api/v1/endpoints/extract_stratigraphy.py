@@ -162,10 +162,7 @@ def create_response_object(
 
         # Get groundwater for this borehole if available
         groundwater_list = (
-            [
-                GroundwaterSchema.from_prediction(gw_entry, pdf_img_scalings)
-                for gw_entry in borehole.groundwater.features
-            ]
+            [GroundwaterSchema.from_prediction(gw_entry, pdf_img_scalings) for gw_entry in borehole.groundwater]
             if include_groundwater
             else None
         )

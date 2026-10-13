@@ -566,7 +566,7 @@ class LayerDepthSchema(BaseModel):
     def from_prediction(cls, prediction: LayerDepthsEntry, pdf_img_scalings: list[tuple[float]]) -> "LayerDepthSchema":
         page_scalings = pdf_img_scalings[prediction.page_number - 1]
         return cls(
-            depth=prediction.value,
+            depth=float(prediction.value),
             bounding_boxes=[
                 BoundingBoxWithPage(
                     page_number=prediction.page_number,
@@ -767,7 +767,7 @@ class ExtractStratigraphyResponse(BaseModel):
 class GroundwaterSchema(BaseModel):
     """Schema for a groundwater measurement with location metadata."""
 
-    depth: float = Field(..., description="Depth of groundwater below surface in meters")
+    depth: float | None = Field(..., description="Depth of groundwater below surface in meters")
     date: str | None = Field(None, description="Measurement date in YYYY-MM-DD format")
     elevation: float | None = Field(None, description="Groundwater elevation above sea level in meters")
     bounding_box: BoundingBoxWithPage = Field(..., description="Location in document (PNG coordinates)")
@@ -788,9 +788,9 @@ class GroundwaterSchema(BaseModel):
         """
         page_scalings = pdf_img_scalings[prediction.page_number - 1]
         return cls(
-            depth=prediction.feature.depth,
+            depth=float(prediction.feature.depth) if prediction.feature.depth is not None else None,
             date=prediction.feature.format_date(),
-            elevation=prediction.feature.elevation,
+            elevation=float(prediction.feature.elevation) if prediction.feature.elevation is not None else None,
             bounding_box=BoundingBoxWithPage(
                 page_number=prediction.page_number,
                 x0=prediction.rect.x0,

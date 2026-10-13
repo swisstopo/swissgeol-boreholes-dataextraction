@@ -85,7 +85,7 @@ class PageDrawer:
             coordinates = borehole_predictions.metadata.coordinates
             elevation = borehole_predictions.metadata.elevation
             name = borehole_predictions.metadata.name
-            groundwaters = borehole_predictions.groundwater_in_borehole
+            groundwaters = borehole_predictions.groundwater
             bh_layers = borehole_predictions.layers
 
             if coordinates is not None and self.page_number == coordinates.page_number:
@@ -98,7 +98,7 @@ class PageDrawer:
                 self.draw_feature(elevation.rect * self.page.derotation_matrix, elevation.feature.is_correct, "blue")
             if name is not None and self.page_number == name.page_number:
                 self.draw_feature(name.rect * self.page.derotation_matrix, name.feature.is_correct, "yellow")
-            for groundwater_entry in groundwaters.features:
+            for groundwater_entry in groundwaters:
                 if self.page_number == groundwater_entry.page_number:
                     self.draw_feature(
                         groundwater_entry.rect * self.page.derotation_matrix,
@@ -124,7 +124,7 @@ class PageDrawer:
             for index, layer in enumerate(layers):
                 self.draw_layer(
                     layer=layer,
-                    sidebar_rects=[bboxes.sidebar_bbox.rect for bboxes in page_bboxes if bboxes.sidebar_bbox],
+                    sidebar_rects=[bboxes.sidebar_bbox for bboxes in page_bboxes if bboxes.sidebar_bbox is not None],
                     index=index,
                     page_number=self.page_number,
                 )
@@ -168,7 +168,7 @@ class PageDrawer:
             scale (int): Size of ticks / arrowheads.
             color (str): Color to draw. Defaults to "red".
         """
-        bbox_material = bounding_boxes.material_description_bbox.rect * self.page.derotation_matrix
+        bbox_material = bounding_boxes.material_description_bbox * self.page.derotation_matrix
         p_start = pymupdf.Point(bbox_material.x1 + shift, bbox_material.y0)
         p_end = pymupdf.Point(bbox_material.x1 + shift, bbox_material.y1)
 
@@ -200,19 +200,19 @@ class PageDrawer:
         """
         if bounding_boxes.sidebar_bbox:  # Draw rectangle for depth columns
             self.shape.draw_rect(
-                pymupdf.Rect(bounding_boxes.sidebar_bbox.rect) * self.page.derotation_matrix,
+                pymupdf.Rect(bounding_boxes.sidebar_bbox) * self.page.derotation_matrix,
             )
             self.shape.finish(color=pymupdf.utils.getColor("green"))
             for (
                 depth_column_entry
             ) in bounding_boxes.depth_column_entry_bboxes:  # Draw rectangle for depth column entries
                 self.shape.draw_rect(
-                    pymupdf.Rect(depth_column_entry.rect) * self.page.derotation_matrix,
+                    pymupdf.Rect(depth_column_entry) * self.page.derotation_matrix,
                 )
             self.shape.finish(color=pymupdf.utils.getColor("purple"))
 
         self.shape.draw_rect(  # Draw rectangle for material description column
-            bounding_boxes.material_description_bbox.rect * self.page.derotation_matrix,
+            bounding_boxes.material_description_bbox * self.page.derotation_matrix,
         )
         self.shape.finish(color=pymupdf.utils.getColor("red"))
 

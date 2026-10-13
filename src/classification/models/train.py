@@ -278,7 +278,7 @@ def load_samples_from_set(dataset_cfg: ExperimentDatasetConfig) -> list[LayerInf
         for ground_truth in dataset_cfg.ground_truths
         for sample in classification_system.process(
             ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
-                ground_truth=GroundTruth(DATAPATH / ground_truth).ground_truth,
+                ground_truth=GroundTruth.from_path(DATAPATH / ground_truth).ground_truth,
             ),
             document_text=document_text,
         )

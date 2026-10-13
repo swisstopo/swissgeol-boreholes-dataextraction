@@ -156,8 +156,8 @@ def extract_coordinates(
         return ExtractCoordinatesResponse(
             bbox=bbox,
             coordinates=Coordinates(
-                east=coord_feature.feature.east.coordinate_value,
-                north=coord_feature.feature.north.coordinate_value,
+                east=float(coord_feature.feature.east.coordinate_value),
+                north=float(coord_feature.feature.north.coordinate_value),
                 projection=srs,
             ),
         )

@@ -1,6 +1,7 @@
 """Classes for evaluating the metadata of a borehole."""
 
 import math
+from decimal import Decimal
 
 from core.benchmark_utils import Metrics
 from core.ground_truth import GroundTruthCoordinates
@@ -92,17 +93,17 @@ class MetadataEvaluator:
         )
 
     @staticmethod
-    def match_elevation(extracted_elevation: float, ground_truth_elevation: float) -> bool:
+    def match_elevation(extracted_elevation: Decimal, ground_truth_elevation: Decimal) -> bool:
         """Method used to evaluate the extracted elevation against the ground truth.
 
         Args:
-            extracted_elevation (float): the extracted elevation
-            ground_truth_elevation (float): the groundtruth elevation
+            extracted_elevation (Decimal): the extracted elevation
+            ground_truth_elevation (Decimal): the groundtruth elevation
 
         Returns:
             bool: if the extracted elevation matches the ground truth
         """
-        return math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.01)
+        return extracted_elevation == ground_truth_elevation
 
     @staticmethod
     def match_coordinates(extracted_coordinates: Coordinate, ground_truth_coordinates: GroundTruthCoordinates) -> bool:
@@ -115,18 +116,18 @@ class MetadataEvaluator:
         Returns:
             bool: if the extracted coordinates match the ground truth
         """
-        if extracted_coordinates.east.coordinate_value > 2e6 and ground_truth_coordinates.E < 2e6:
-            ground_truth_east = int(ground_truth_coordinates.E) + 2e6
-            ground_truth_north = int(ground_truth_coordinates.N) + 1e6
-        elif extracted_coordinates.east.coordinate_value < 2e6 and ground_truth_coordinates.E > 2e6:
-            ground_truth_east = int(ground_truth_coordinates.E) - 2e6
-            ground_truth_north = int(ground_truth_coordinates.N) - 1e6
+        if extracted_coordinates.east.coordinate_value > 2000000 and ground_truth_coordinates.E < 2000000:
+            ground_truth_east = ground_truth_coordinates.E + 2000000
+            ground_truth_north = ground_truth_coordinates.N + 1000000
+        elif extracted_coordinates.east.coordinate_value < 2000000 and ground_truth_coordinates.E > 2000000:
+            ground_truth_east = ground_truth_coordinates.E - 2000000
+            ground_truth_north = ground_truth_coordinates.N - 1000000
         else:
-            ground_truth_east = int(ground_truth_coordinates.E)
-            ground_truth_north = int(ground_truth_coordinates.N)
+            ground_truth_east = ground_truth_coordinates.E
+            ground_truth_north = ground_truth_coordinates.N
 
-        return (math.isclose(int(extracted_coordinates.east.coordinate_value), ground_truth_east, abs_tol=2)) and (
-            math.isclose(int(extracted_coordinates.north.coordinate_value), ground_truth_north, abs_tol=2)
+        return (math.isclose(extracted_coordinates.east.coordinate_value, ground_truth_east, abs_tol=2)) and (
+            math.isclose(extracted_coordinates.north.coordinate_value, ground_truth_north, abs_tol=2)
         )
 
     @staticmethod

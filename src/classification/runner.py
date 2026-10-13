@@ -72,7 +72,7 @@ def _load_ground_truth_dict(paths: tuple[Path, ...]) -> dict[str, list[GroundTru
     """Load and merge ground truth boreholes from one or more JSON files/directories."""
     merged: dict[str, list[GroundTruthBorehole]] = {}
     for json_path in _expand_json_paths(paths):
-        merged.update(GroundTruth(json_path).ground_truth)
+        merged.update(GroundTruth.from_path(json_path).ground_truth)
     return merged
 
 
