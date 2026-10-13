@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
+from pydantic import ValidationError
 
 from core.benchmark_utils import BenchmarkSummary
 from core.ground_truth import GroundTruth
@@ -151,7 +151,7 @@ def main():
     except FileNotFoundError:
         logger.error("Predictions file not found: %s", args.predictions_path)
         return
-    except json.JSONDecodeError as e:
+    except ValidationError as e:
         logger.error("Error decoding JSON from predictions file: %s", e)
         return
 
