@@ -7,7 +7,6 @@ min_vertical_overlap: 0.9
 max_horizontal_distance: 50
 
 # For matching_keywords, respect the following rules
-# * Keyword should match the end of word (e.g.: bohrung -> kernbohrung, rammkernbohrung)
 # * Keyword is case insensitive
 # * Keywords are ignored for borehole name matching : "12" == "bohrung 12"
 matching_keywords:
@@ -48,4 +47,4 @@ matching_keywords:
   ]
 
 # Keyword to ignore in borehole name detection and evaluation
-excluded_keywords: ["n", "nr.", "nr", "n r", "n°", "nº", "no", "nummer"]
+excluded_keywords: ["n", "nr.", "nr", "n°", "nº", "no", "nummer"]

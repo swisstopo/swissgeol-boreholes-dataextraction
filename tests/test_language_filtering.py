@@ -1,7 +1,7 @@
 """Unit tests for language-filtering utilities."""
 
+import pymupdf
 import pytest
-from pymupdf import pymupdf
 
 from extraction.features.metadata.borehole_name_extraction import (
     _contract_words,

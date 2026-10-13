@@ -16,8 +16,11 @@ class TextLineRTree:
             max_x = max([line.rect.x1 for line in text_lines])
             min_y = min([line.rect.y0 for line in text_lines])
             max_y = max([line.rect.y1 for line in text_lines])
-            if min_x < max_x and min_y < max_y:
-                bounds = (min_x, min_y, max_x, max_y)
+            if min_x == max_x:
+                max_x += 1
+            if min_y == max_y:
+                max_y += 1
+            bounds = (min_x, min_y, max_x, max_y)
 
         self.text_line_rtree = fastquadtree.RectQuadTreeObjects(bounds, capacity=8)
         for line in text_lines:

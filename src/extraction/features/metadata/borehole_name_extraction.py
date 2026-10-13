@@ -70,8 +70,8 @@ def clean_borehole_name(text: str, excluded_keywords: list[str]) -> str | None:
         text = remove_any_keyword(text, excluded_keywords)
 
     # Remove leading/trailing whitespae and punctuation, normalize whitespace
-    cleaned = re.sub(r"^[^\w]+", "", text)
-    cleaned = re.sub(r"[^\w]+$", " ", cleaned)
+    cleaned = re.sub(r"^[\W_]+", "", text)
+    cleaned = re.sub(r"[\W_]+$", " ", cleaned)
     cleaned = normalize_spaces(cleaned)
 
     # Check if result is empty
@@ -117,7 +117,7 @@ def extract_borehole_names(
     # only horizontal lines
     horizontal_lines = [line for line in text_lines if abs(line.text_angle) < 5]
     line_heights = sorted([line.rect.height for line in horizontal_lines])
-    if len(line_heights) < 2:
+    if not line_heights:
         return []
 
     median_line_height = line_heights[len(line_heights) // 2]
@@ -157,7 +157,7 @@ def _extract_borehole_names_from_line(
     words = _contract_words(words)
 
     first_word = words[0]
-    if first_word.text.lower() in {"anhang", "allegato", "annexe"}:
+    if _preprocess_word(first_word.text) in {"anhang", "allegato", "annexe", "beilage"}:
         return []
 
     keyword_match_length = _keyword_match_length([word.text for word in words], keywords)
@@ -273,8 +273,7 @@ def _contract_words(words: list[TextWord]) -> list[TextWord]:
 
 
 def _is_number_keyword(word: str, excluded_keywords: list[str]) -> bool:
-    alnum_only = "".join(char for char in word if char.isalnum()).lower()
-    return alnum_only in excluded_keywords
+    return _preprocess_word(word) in excluded_keywords
 
 
 def _preprocess_word(word: str) -> str:
