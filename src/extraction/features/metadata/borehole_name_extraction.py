@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 
 import pymupdf
+from pydantic import BaseModel
 
 from swissgeol_doc_processing.geometry.util import y_overlap_significant_smallest
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
@@ -13,8 +13,7 @@ from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature, Feat
 from swissgeol_doc_processing.utils.language_filtering import normalize_spaces, remove_any_keyword
 
 
-@dataclass
-class BoreholeName(ExtractedFeature):
+class BoreholeName(ExtractedFeature, BaseModel):
     """Abstract class for Name Information."""
 
     name: str  # Name of the borehole
@@ -27,46 +26,6 @@ class BoreholeName(ExtractedFeature):
             str: The object as a string.
         """
         return f"Name(name={self.name}, confidence={self.confidence})"
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "name": self.name,
-            "confidence": self.confidence,
-            "is_correct": self.is_correct,
-        }
-
-    @classmethod
-    def from_json(cls, data: dict) -> BoreholeName:
-        """Converts a dictionary to an object.
-
-        Args:
-            data (dict): A dictionary representing the name information.
-
-        Returns:
-            BoreholeName: The borehole's name information object.
-        """
-        return cls(name=data["name"], confidence=data["confidence"], is_correct=data.get("is_correct"))
-
-
-@dataclass
-class NameInDocument:
-    """Class for extracted borehole name information from a document."""
-
-    name_feature_list: list[FeatureOnPage[BoreholeName]]
-    filename: str
-
-    def to_json(self) -> list[dict]:
-        """Converts the object to a list of dictionaries.
-
-        Returns:
-            list[dict]: The object as a list of dictionaries.
-        """
-        return [entry.to_json() for entry in self.name_feature_list]
 
 
 def _find_closest_nearby_line(
@@ -303,7 +262,7 @@ def _extract_borehole_names_from_line(
                 FeatureOnPage(
                     feature=BoreholeName(name=text_cleaned, confidence=confidence),
                     rect=rect,
-                    page=line.page_number,
+                    page_number=line.page_number,
                 )
             )
             continue

@@ -9,7 +9,7 @@ as well as a patch version with all fields optional for patch operations.
 ########################################################################################################################
 
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import Annotated
 
@@ -29,10 +29,17 @@ from classification.utils.datasets.lithology import LithologySystem
 from classification.utils.datasets.mineral_components import MineralComponentsSystem
 from classification.utils.datasets.organic_components import OrganicComponentsSystem
 from classification.utils.datasets.uscs import USCSSystem
-from extraction.features.groundwater.groundwater_extraction import Groundwater
+from extraction.features.groundwater.groundwater import Groundwater
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepthsEntry
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
+
+
+class ClassificationConsolidationClasses(StrEnum):
+    """Rock category inferred by the lithology head."""
+
+    consolidated = "consolidated"
+    unconsolidated = "unconsolidated"
 
 
 def validate_filename(value: str) -> str:
@@ -559,7 +566,7 @@ class LayerDepthSchema(BaseModel):
     def from_prediction(cls, prediction: LayerDepthsEntry, pdf_img_scalings: list[tuple[float]]) -> "LayerDepthSchema":
         page_scalings = pdf_img_scalings[prediction.page_number - 1]
         return cls(
-            depth=prediction.value,
+            depth=float(prediction.value),
             bounding_boxes=[
                 BoundingBoxWithPage(
                     page_number=prediction.page_number,
@@ -760,7 +767,7 @@ class ExtractStratigraphyResponse(BaseModel):
 class GroundwaterSchema(BaseModel):
     """Schema for a groundwater measurement with location metadata."""
 
-    depth: float = Field(..., description="Depth of groundwater below surface in meters")
+    depth: float | None = Field(..., description="Depth of groundwater below surface in meters")
     date: str | None = Field(None, description="Measurement date in YYYY-MM-DD format")
     elevation: float | None = Field(None, description="Groundwater elevation above sea level in meters")
     bounding_box: BoundingBoxWithPage = Field(..., description="Location in document (PNG coordinates)")
@@ -781,9 +788,9 @@ class GroundwaterSchema(BaseModel):
         """
         page_scalings = pdf_img_scalings[prediction.page_number - 1]
         return cls(
-            depth=prediction.feature.depth,
+            depth=float(prediction.feature.depth) if prediction.feature.depth is not None else None,
             date=prediction.feature.format_date(),
-            elevation=prediction.feature.elevation,
+            elevation=float(prediction.feature.elevation) if prediction.feature.elevation is not None else None,
             bounding_box=BoundingBoxWithPage(
                 page_number=prediction.page_number,
                 x0=prediction.rect.x0,
@@ -862,10 +869,12 @@ def enum_as_name(enum_cls: type[Enum]) -> type:
 class ClassifyResponse(BaseModel):
     """Response schema for the unified `/classify` endpoint.
 
-    Each field corresponds to one classification task. A field is `None` if that task wasn't run for the
-    inferred rock type; otherwise it holds the predicted class (single-label tasks) or classes (multi-label
-    tasks: accessory_components, debris, grain_angularity, grain_shape, mineral_components,
-    organic_components; rank tasks: en_secondary).
+    `consolidation` indicates whether the lithology head classified the material as consolidated
+    rock or unconsolidated sediment, which determines which of the remaining fields are populated.
+
+    Each remaining field corresponds to one classification task. A field is omitted from the response if that task
+    wasn't run for the inferred rock type, or if it ran but predicted no specific class (not_specified only).
+    Otherwise it holds the predicted class (single-label tasks) or classes (multi-label tasks; rank tasks).
 
     Consolidated rock tasks: lithology, alteration_degree_consolidated, cementation, color, mineral_components,
         accessory_components.
@@ -886,6 +895,11 @@ class ClassifyResponse(BaseModel):
     cementation: enum_as_name(CementationSystem.CementationClasses) | None = Field(
         default=None,
         description="Predicted cementation class (consolidated rock only).",
+    )
+    consolidation: ClassificationConsolidationClasses | None = Field(
+        default=None,
+        description="Whether the lithology head classified the material as consolidated rock or "
+        "unconsolidated sediment; determines which of the other fields are populated.",
     )
     color: enum_as_name(ColorSystem.ColorClasses) | None = Field(
         default=None,

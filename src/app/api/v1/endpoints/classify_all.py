@@ -6,7 +6,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from app.common.schemas import ClassifyRequest, ClassifyResponse
+from app.common.schemas import ClassificationConsolidationClasses, ClassifyRequest, ClassifyResponse
+from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import ClassificationTask
 
 if TYPE_CHECKING:
@@ -92,8 +93,9 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
         bert_models: Models loaded at startup via the lifespan, keyed by task name.
 
     Returns:
-        ClassifyResponse with the predicted class (or classes, for multi-label/rank tasks) for every task
-        relevant to the inferred rock type; irrelevant tasks are left as `None`.
+        ClassifyResponse with `consolidation` set to the inferred rock type (consolidated or
+        unconsolidated), plus the predicted class (or classes, for multi-label/rank tasks) for every task
+        relevant to that rock type; irrelevant tasks are left as `None`.
     """
     from classification.utils.datasets.lithology import LithologySystem
 
@@ -103,25 +105,57 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
 
     # Lithology head (layer 11 + pooler + classifier) determines consolidated vs unconsolidated.
     lithology_class = lithology_model.predict_from_embedding(shared_hidden_states, extended_mask)[0]
-    is_unconsolidated = lithology_class == LithologySystem.LithologyClasses.unconsolidated
 
+    if lithology_class == LithologySystem.LithologyClasses.not_specified:
+        return ClassifyResponse()
+
+    is_unconsolidated = lithology_class == LithologySystem.LithologyClasses.unconsolidated
     relevant_tasks = _UNCONSOLIDATED_TASKS if is_unconsolidated else _CONSOLIDATED_TASKS
 
     # Step 2: fan out to each relevant task head using the same shared backbone output.
-    predictions = dict.fromkeys(relevant_tasks)
+    predictions = {}
     for task_name in relevant_tasks:
         if task_name not in bert_models:
             logger.warning(f"Task '{task_name}' not loaded, skipping.")
             continue
-        if task_name == "lithology":
-            predictions["lithology"] = lithology_class
-            continue
+
+        # Output for lithology already computed
         model = bert_models[task_name]
-        classes = model.predict_from_embedding(shared_hidden_states, extended_mask)
-        predictions[task_name] = (
-            classes
-            if model.classification_system.classification_task() != ClassificationTask.single_label
-            else classes[0]
+        classes = (
+            [lithology_class]
+            if task_name == "lithology"
+            else model.predict_from_embedding(shared_hidden_states, extended_mask)
         )
 
-    return ClassifyResponse(**predictions)
+        # Index 0 is "not_specified" for every classification system, skip
+        # assignment when only not_specified is predicted, leaving the field as None.
+        if any(classes):
+            predictions[task_name] = (
+                classes
+                if model.classification_system.classification_task() != ClassificationTask.single_label
+                else classes[0]
+            )
+        else:
+            predictions[task_name] = None
+
+    # Step 3: en_main and en_secondary are predicted independently, so the same class can appear
+    # in both; remove it from en_secondary to keep the two predictions mutually exclusive.
+    if (
+        ExistingClassificationSystems.en_secondary.name in predictions
+        and ExistingClassificationSystems.en_main.name in predictions
+    ):
+        predictions[ExistingClassificationSystems.en_secondary.name] = [
+            sec
+            for sec in predictions[ExistingClassificationSystems.en_secondary.name] or []
+            if sec != predictions[ExistingClassificationSystems.en_main.name]
+        ]
+        # Ensure emptied list is set to None
+        if not predictions[ExistingClassificationSystems.en_secondary.name]:
+            predictions[ExistingClassificationSystems.en_secondary.name] = None
+
+    return ClassifyResponse(
+        consolidation=ClassificationConsolidationClasses.unconsolidated
+        if is_unconsolidated
+        else ClassificationConsolidationClasses.consolidated,
+        **predictions,
+    )

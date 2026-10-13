@@ -5,14 +5,11 @@ import re
 
 import pymupdf
 
+from extraction.features.extracted_borehole import ExtractedBorehole
 from extraction.features.stratigraphy.borehole_candidate import BoreholeCandidate
 from extraction.features.stratigraphy.depth_description_alignment import match_lines_to_interval
 from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
-from extraction.features.stratigraphy.layer.layer import (
-    ExtractedBorehole,
-    Layer,
-    LayerDepths,
-)
+from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from extraction.features.stratigraphy.no_sidebar_description_grouping import get_descriptions_blocks
 from extraction.features.stratigraphy.sidebar.classes.protocol_sidebar import ProtocolSidebar
@@ -158,9 +155,9 @@ class BoreholeExtractor:
                     text=pair.block.text,
                     lines=[
                         FeatureOnPage(
-                            feature=MaterialDescriptionLine(text_line.text),
+                            feature=MaterialDescriptionLine(text=text_line.text),
                             rect=text_line.rect,
-                            page=text_line.page_number,
+                            page_number=text_line.page_number,
                         )
                         for text_line in pair.block.lines
                     ],

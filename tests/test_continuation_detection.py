@@ -1,29 +1,27 @@
 """Test suite for merge boreholes in continuation detection."""
 
+from decimal import Decimal
+
 import pymupdf
 
+from extraction.features.extracted_borehole import ExtractedBorehole
 from extraction.features.metadata.borehole_name_extraction import BoreholeName
+from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
-from extraction.features.stratigraphy.layer.layer import (
-    ExtractedBorehole,
-    Layer,
-    LayerDepths,
-    LayerDepthsEntry,
-)
+from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
 from extraction.features.stratigraphy.layer.overlap_detection import OverlapResult
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
-from swissgeol_doc_processing.geometry.geometry_dataclasses import BoundingBox
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 
-def _depth(value: float, page: int) -> LayerDepthsEntry:
-    return LayerDepthsEntry(value=value, rect=None, page_number=page)
+def _depth(value: Decimal, page_number: int) -> LayerDepthsEntry:
+    return LayerDepthsEntry(value=value, rect=None, page_number=page_number)
 
 
 def _name(text: str, confidence: float = 1.0) -> FeatureOnPage[BoreholeName]:
     return FeatureOnPage(
-        feature=BoreholeName(name=text, confidence=confidence), rect=pymupdf.Rect(0, 0, 10, 10), page=1
+        feature=BoreholeName(name=text, confidence=confidence), rect=pymupdf.Rect(0, 0, 10, 10), page_number=1
     )
 
 
@@ -31,12 +29,12 @@ def _page_bbox(page: int) -> PageBoundingBoxes:
     return PageBoundingBoxes(
         sidebar_bbox=None,
         depth_column_entry_bboxes=[],
-        material_description_bbox=BoundingBox(pymupdf.Rect(0, 0, 10, 10)),
+        material_description_bbox=pymupdf.Rect(0, 0, 10, 10),
         page=page,
     )
 
 
-def _layer(text: str, start: float | None, end: float | None, page: int) -> Layer:
+def _layer(text: str, start: Decimal | None, end: Decimal | None, page: int) -> Layer:
     return Layer(
         material_description=MaterialDescription(text=text, lines=[]),
         depths=LayerDepths(
@@ -137,12 +135,12 @@ def test_merge_boreholes_name_conflict_blocks_depth_fallback_merge(monkeypatch):
     previous_borehole = ExtractedBorehole(
         predictions=[_layer("Sandstein", 10.0, 20.0, 1)],
         bounding_boxes=[_page_bbox(1)],
-        name=_name("KB12"),
+        metadata=BoreholeMetadata(name=_name("KB12")),
     )
     current_borehole = ExtractedBorehole(
         predictions=[_layer("Mergel", 20.0, 30.0, 2)],
         bounding_boxes=[_page_bbox(2)],
-        name=_name("KB13"),
+        metadata=BoreholeMetadata(name=_name("KB13")),
     )
 
     monkeypatch.setattr(
@@ -163,12 +161,12 @@ def test_merge_boreholes_low_confidence_name_does_not_block_merge(monkeypatch):
     previous_borehole = ExtractedBorehole(
         predictions=[_layer("Sandstein", 10.0, 20.0, 1)],
         bounding_boxes=[_page_bbox(1)],
-        name=_name("KB12", confidence=0.2),
+        metadata=BoreholeMetadata(name=_name("KB12", confidence=0.2)),
     )
     current_borehole = ExtractedBorehole(
         predictions=[_layer("Mergel", 20.0, 30.0, 2)],
         bounding_boxes=[_page_bbox(2)],
-        name=_name("KB13"),
+        metadata=BoreholeMetadata(name=_name("KB13")),
     )
 
     monkeypatch.setattr(

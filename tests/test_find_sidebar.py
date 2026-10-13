@@ -1,7 +1,8 @@
 """Test suite for the find_depth_columns module."""
 
+from decimal import Decimal
+
 import pymupdf
-import pytest
 
 from extraction.features.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
 from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
@@ -33,25 +34,25 @@ def test_depth_column_entries():  # noqa: D103
     ]
     entries = DepthColumnEntryExtractor.find_in_words(all_words)
     assert len(entries) == 7, "There should be 7 entries"
-    assert pytest.approx(entries[0].value) == 10.0, "The first entry should have a value of 10.0"
+    assert entries[0].value == Decimal("10"), "The first entry should have a value of 10.0"
     assert entries[0].has_decimal_point, "The first entry has a decimal point"
 
-    assert pytest.approx(entries[1].value) == 20.0, "The second entry should have a value of 20.0"
+    assert entries[1].value == Decimal("20"), "The second entry should have a value of 20.0"
     assert entries[1].has_decimal_point, "The second entry has a decimal point"
 
-    assert pytest.approx(entries[2].value) == 30.0, "The third entry should have a value of 30.0"
+    assert entries[2].value == Decimal("30"), "The third entry should have a value of 30.0"
     assert entries[2].has_decimal_point, "The third entry has a decimal point"
 
-    assert pytest.approx(entries[3].value) == 40.0, "The fourth entry should have a value of 40.0"
+    assert entries[3].value == Decimal("40"), "The fourth entry should have a value of 40.0"
     assert entries[3].has_decimal_point, "The forth entry has a decimal point"
 
-    assert pytest.approx(entries[4].value) == 50.0, "The fifth entry should have a value of 50.0"
+    assert entries[4].value == Decimal("50"), "The fifth entry should have a value of 50.0"
     assert not entries[4].has_decimal_point, "The fifth entry doesn't have a decimal point"
 
-    assert pytest.approx(entries[5].value) == 60.0, "The sixth entry should have a value of 60.0"
+    assert entries[5].value == Decimal("60"), "The sixth entry should have a value of 60.0"
     assert entries[5].has_decimal_point, "The sixth entry has a decimal point"
 
-    assert pytest.approx(entries[6].value) == 70.0, "The seventh entry should have a value of 70.0"
+    assert entries[6].value == Decimal("70"), "The seventh entry should have a value of 70.0"
     assert not entries[6].has_decimal_point, "The seventh entry doesn't have a decimal point"
 
 
@@ -59,13 +60,13 @@ def test_atobintervalextractor_fromtext():  # noqa: D103
     """Test the AToBIntervalExtractor.from_text."""
     line = TextLine([TextWord(pymupdf.Rect(0, 0, 10, 1), "10.00-20.0m", PAGE_NUMBER)])
     interval, _ = AToBIntervalExtractor.from_text(line)
-    assert interval.start.value == 10.0, "The start value of the interval should be 10.0"
-    assert interval.end.value == 20.0, "The end value of the interval should be 20.0"
+    assert interval.start.value == Decimal(10.0), "The start value of the interval should be 10.0"
+    assert interval.end.value == Decimal(20.0), "The end value of the interval should be 20.0"
 
     line = TextLine([TextWord(pymupdf.Rect(0, 2, 10, 3), "30.0-40.0m", PAGE_NUMBER)])
     interval, _ = AToBIntervalExtractor.from_text(line)
-    assert interval.start.value == 30.0, "The start value of the interval should be 30.0"
-    assert interval.end.value == 40.0, "The end value of the interval should be 40.0"
+    assert interval.start.value == Decimal(30.0), "The start value of the interval should be 30.0"
+    assert interval.end.value == Decimal(40.0), "The end value of the interval should be 40.0"
 
 
 def test_depth_column_entries_with_leading_character():  # noqa: D103
@@ -78,10 +79,10 @@ def test_depth_column_entries_with_leading_character():  # noqa: D103
     ]
     entries = DepthColumnEntryExtractor.find_in_words(all_words)
     assert len(entries) == 4, "There should be 4 entries"
-    assert entries[0].value == 0.0, "The first entry should have a value of 0"
-    assert entries[1].value == 2.0, "The second entry should have a value of 2.0"
-    assert entries[2].value == 3.0, "The third entry should have a value of 3.0"
-    assert entries[3].value == 4.2, "The fourth entry should have a value of 4.2"
+    assert entries[0].value == Decimal("0.0"), "The first entry should have a value of 0"
+    assert entries[1].value == Decimal("2.0"), "The second entry should have a value of 2.0"
+    assert entries[2].value == Decimal("3.0"), "The third entry should have a value of 3.0"
+    assert entries[3].value == Decimal("4.2"), "The fourth entry should have a value of 4.2"
 
 
 def test_aabovebsidebarextractor_arithmetic_progression():  # noqa: D103
@@ -125,11 +126,11 @@ def test_aabovebsidebarextractor():  # noqa: D103
     columns = [sidebar_noise.sidebar for sidebar_noise in sidebars_noise]
     assert len(columns) == 1, "There should be 1 column"
     assert len(columns[0].entries) == 5, "The column should have 5 entries"
-    assert pytest.approx(columns[0].entries[0].value) == 12.0, "The first entry should have a value of 12.0"
-    assert pytest.approx(columns[0].entries[1].value) == 20.0, "The second entry should have a value of 20.0"
-    assert pytest.approx(columns[0].entries[2].value) == 34.0, "The third entry should have a value of 34.0"
-    assert pytest.approx(columns[0].entries[3].value) == 40.0, "The fourth entry should have a value of 40.0"
-    assert pytest.approx(columns[0].entries[4].value) == 50.0, "The fourth entry should have a value of 50.0"
+    assert columns[0].entries[0].value == Decimal("12.0"), "The first entry should have a value of 12.0"
+    assert columns[0].entries[1].value == Decimal("20.0"), "The second entry should have a value of 20.0"
+    assert columns[0].entries[2].value == Decimal("34.0"), "The third entry should have a value of 34.0"
+    assert columns[0].entries[3].value == Decimal("40.0"), "The fourth entry should have a value of 40.0"
+    assert columns[0].entries[4].value == Decimal("50.0"), "The fourth entry should have a value of 50.0"
 
 
 def test_aabovebsidebarextractor_two_column():  # noqa: D103

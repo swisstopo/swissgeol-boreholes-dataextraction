@@ -1,5 +1,7 @@
 """Test suite for the coordinate_extraction module."""
 
+from decimal import Decimal
+
 import pymupdf
 import pytest
 
@@ -17,23 +19,25 @@ from swissgeol_doc_processing.utils.file_utils import find_project_root, read_pa
 def test_strLV95():  # noqa: D103
     """Test the string representation of an LV95Coordinate object."""
     coord = LV95Coordinate(
-        east=CoordinateEntry(coordinate_value=2789456), north=CoordinateEntry(coordinate_value=1123012)
+        east=CoordinateEntry(coordinate_value=Decimal(2789456)),
+        north=CoordinateEntry(coordinate_value=Decimal(1123012)),
     )
     assert str(coord) == "E: 2789456, N: 1123012"
 
 
 def test_to_jsonLV95():  # noqa: D103
-    """Test the to_json method of an LV95Coordinate object."""
+    """Test the JSON serialization of an LV95Coordinate object."""
     coord = LV95Coordinate(
-        east=CoordinateEntry(coordinate_value=2789456), north=CoordinateEntry(coordinate_value=1123012)
+        east=CoordinateEntry(coordinate_value=Decimal(2789456)),
+        north=CoordinateEntry(coordinate_value=Decimal(1123012)),
     )
-    assert coord.to_json() == {"E": 2789456, "N": 1123012, "is_correct": None}
+    assert coord.model_dump() == {"E": 2789456, "N": 1123012, "is_correct": None}
 
 
 def test_swap_coordinates():  # noqa: D103
     """Test the swapping of coordinates in an LV95Coordinate object."""
-    north = CoordinateEntry(coordinate_value=789456)
-    east = CoordinateEntry(coordinate_value=123012)
+    north = CoordinateEntry(coordinate_value=Decimal(789456))
+    east = CoordinateEntry(coordinate_value=Decimal(123012))
     coord = LV95Coordinate(north=north, east=east)
     assert coord.east == north
     assert coord.north == east
@@ -42,17 +46,17 @@ def test_swap_coordinates():  # noqa: D103
 def test_strLV03():  # noqa: D103
     """Test the string representation of an LV03Coordinate object."""
     coord = LV03Coordinate(
-        east=CoordinateEntry(coordinate_value=789456), north=CoordinateEntry(coordinate_value=123012)
+        east=CoordinateEntry(coordinate_value=Decimal(789456)), north=CoordinateEntry(coordinate_value=Decimal(123012))
     )
     assert str(coord) == "E: 789456, N: 123012"
 
 
 def test_to_jsonLV03():  # noqa: D103
-    """Test the to_json method of an LV03Coordinate object."""
+    """Test the JSON serialization of an LV03Coordinate object."""
     coord = LV03Coordinate(
-        east=CoordinateEntry(coordinate_value=789456), north=CoordinateEntry(coordinate_value=123012)
+        east=CoordinateEntry(coordinate_value=Decimal(789456)), north=CoordinateEntry(coordinate_value=Decimal(123012))
     )
-    assert coord.to_json() == {"E": 789456, "N": 123012, "is_correct": None}
+    assert coord.model_dump() == {"E": 789456, "N": 123012, "is_correct": None}
 
 
 doc = pymupdf.open(find_project_root() / "example" / "example_borehole_profile.pdf")
@@ -68,8 +72,8 @@ def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
     coordinates = extractor_de.extract_coordinates(doc)[0]
     # Check if the returned value is a list
     assert isinstance(coordinates.feature, Coordinate)
-    assert repr(coordinates.feature.east) == "615'790.0"
-    assert repr(coordinates.feature.north) == "157'500.0"
+    assert repr(coordinates.feature.east) == "615'790"
+    assert repr(coordinates.feature.north) == "157'500"
 
 
 def test_CoordinateExtractor_extract_coordinates_with_digits_in_coordinates():  # noqa: D103
@@ -78,8 +82,8 @@ def test_CoordinateExtractor_extract_coordinates_with_digits_in_coordinates():  
     coordinates = CoordinateExtractor("de", matching_params).extract_coordinates(doc_with_digits_in_coordinates)[0]
     # Check if the returned value is a list
     assert isinstance(coordinates.feature, Coordinate)
-    assert repr(coordinates.feature.east) == "607'562.0"
-    assert repr(coordinates.feature.north) == "187'087.5"
+    assert repr(coordinates.feature.east) == "607'562"
+    assert repr(coordinates.feature.north) == "187'087.50"
 
 
 def _create_simple_lines(text_lines: list[str]) -> list[TextLine]:
@@ -127,15 +131,15 @@ def test_CoordinateExtractor_get_coordinates_with_x_y_labels():  # noqa: D103
             "Y = 1'999'999",
         ]
     )
-    coordinates = extractor_de.get_coordinates_with_x_y_labels(lines, page=1)
+    coordinates = extractor_de.get_coordinates_with_x_y_labels(lines, page_number=1)
 
     # coordinates with explicit "X" and "Y" labels are found, even when they are further apart
-    assert coordinates[0].feature.east.coordinate_value == 2600000
-    assert coordinates[0].feature.north.coordinate_value == 1200000
+    assert coordinates[0].feature.east.coordinate_value == Decimal(2600000)
+    assert coordinates[0].feature.north.coordinate_value == Decimal(1200000)
     # 1st X-value is only combined with the 1st Y-value, 2nd X-value with 2nd Y-value, etc.
     # Values are swapped when necessary
-    assert coordinates[1].feature.east.coordinate_value == 2600001
-    assert coordinates[1].feature.north.coordinate_value == 1200001
+    assert coordinates[1].feature.east.coordinate_value == Decimal(2600001)
+    assert coordinates[1].feature.north.coordinate_value == Decimal(1200001)
     # ignore invalid coordinates and additional values that are only available with "X" or "Y" label, but not both
     assert len(coordinates) == 2
 
@@ -145,23 +149,23 @@ def test_get_axis_aligned_lines():
     rect_key = pymupdf.Rect(x0=200, y0=200, x1=300, y1=250)
 
     # Key line
-    key_line = TextLine([TextWord(pymupdf.Rect(200, 200, 300, 400), "Linie1", page=1)])
+    key_line = TextLine([TextWord(pymupdf.Rect(200, 200, 300, 400), "Linie1", page_number=1)])
     # Inside horizontal range (right)
-    inside_right = TextLine([TextWord(pymupdf.Rect(310, 200, 410, 250), "Linie2", page=1)])
+    inside_right = TextLine([TextWord(pymupdf.Rect(310, 200, 410, 250), "Linie2", page_number=1)])
     # Inside vertical range (below)
-    inside_below = TextLine([TextWord(pymupdf.Rect(200, 260, 300, 310), "Linie3", page=1)])
+    inside_below = TextLine([TextWord(pymupdf.Rect(200, 260, 300, 310), "Linie3", page_number=1)])
     # Outside vertical and horizontal range (above)
-    outside_above = TextLine([TextWord(pymupdf.Rect(200, 140, 300, 190), "Linie4", page=1)])
+    outside_above = TextLine([TextWord(pymupdf.Rect(200, 140, 300, 190), "Linie4", page_number=1)])
     # Completely outside both ranges (diagonal)
-    outside_diagonal = TextLine([TextWord(pymupdf.Rect(310, 260, 410, 310), "Linie5", page=1)])
+    outside_diagonal = TextLine([TextWord(pymupdf.Rect(310, 260, 410, 310), "Linie5", page_number=1)])
     # Edge case: exactly on horizontal limit
-    boundary_left = TextLine([TextWord(pymupdf.Rect(100, 200, 200, 250), "Linie6", page=1)])
+    boundary_left = TextLine([TextWord(pymupdf.Rect(100, 200, 200, 250), "Linie6", page_number=1)])
     # Edge case: exactly on edge of horizontal limit and vertical limit
-    boundary_edge_above = TextLine([TextWord(pymupdf.Rect(300, 250, 400, 300), "Linie7", page=1)])
+    boundary_edge_above = TextLine([TextWord(pymupdf.Rect(300, 250, 400, 300), "Linie7", page_number=1)])
     # # Inside vertical limit, overlap with horizontal limit
-    overlap_right = TextLine([TextWord(pymupdf.Rect(250, 200, 350, 250), "Linie8", page=1)])
+    overlap_right = TextLine([TextWord(pymupdf.Rect(250, 200, 350, 250), "Linie8", page_number=1)])
     # # Overlap with vertical and horizontal limit
-    overlap_right_below = TextLine([TextWord(pymupdf.Rect(250, 225, 350, 275), "Linie9", page=1)])
+    overlap_right_below = TextLine([TextWord(pymupdf.Rect(250, 225, 350, 275), "Linie9", page_number=1)])
 
     text_lines = [
         key_line,
@@ -203,11 +207,11 @@ def test_CoordinateExtractor_get_coordinates_near_key():  # noqa: D103
     coordinates = extractor_de.get_coordinates_near_key(lines, page=1)
 
     # coordinates on the same line as the key are found, and OCR errors are corrected
-    assert coordinates[0].feature.east.coordinate_value == 615790
-    assert coordinates[0].feature.north.coordinate_value == 157500
+    assert coordinates[0].feature.east.coordinate_value == Decimal(615790)
+    assert coordinates[0].feature.north.coordinate_value == Decimal(157500)
     # coordinates immediately below is also found
-    assert coordinates[1].feature.east.coordinate_value == 600001
-    assert coordinates[1].feature.north.coordinate_value == 200001
+    assert coordinates[1].feature.east.coordinate_value == Decimal(600001)
+    assert coordinates[1].feature.north.coordinate_value == Decimal(200001)
     # no coordinates are found far down from the coordinates key
     assert len(coordinates) == 2
 
@@ -217,23 +221,23 @@ def test_CoordinateExtractor_get_coordinates_near_key():  # noqa: D103
     [
         (
             "sample text followed by a key with a spelling mistake Ko0rdinate 615.790 / 157.500 and some noise",
-            (615790, 157500),
+            (Decimal(615790), Decimal(157500)),
         ),
         (
             "sample text followed by a key with a spelling mistake Ko0rdinate X= 615.790 / Y157.500 and some noise",
-            (615790, 157500),
+            (Decimal(615790), Decimal(157500)),
         ),
         (
             "sample text followed by a key with a spelling mistake Ko0rdinate X: 2'615'790 / 1'157'500 and some noise",
-            (2615790, 1157500),
+            (Decimal(2615790), Decimal(1157500)),
         ),
         (
             "sample text followed by a key with a spelling mistake Ko0rdinate X 2615790 / 1157500 and some noise",
-            (2615790, 1157500),
+            (Decimal(2615790), Decimal(1157500)),
         ),
         (
             "sample text followed by a key with a spelling mistake Ko0rdinate 615790 / 157500 and some noise",
-            (615790, 157500),
+            (Decimal(615790), Decimal(157500)),
         ),
     ],
 )
@@ -264,37 +268,37 @@ def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
     # Example from 269126143-bp.pdf (a slash in the middle of the coordinates as misread by OCR as the digit 1)
     lines = _create_simple_lines(["269578211260032"])
     coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
-    assert coordinates[0].feature.east.coordinate_value == 2695782
-    assert coordinates[0].feature.north.coordinate_value == 1260032
+    assert coordinates[0].feature.east.coordinate_value == Decimal(2695782)
+    assert coordinates[0].feature.north.coordinate_value == Decimal(1260032)
 
 
 def test_get_single_decimal_coordinates():
     """Test the extraction of decimal coordinates from a list of text lines."""
     lines = _create_simple_lines(["615.790.6 / 157.500.5"])
     coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
-    assert coordinates[0].feature.east.coordinate_value == 615790.6
-    assert coordinates[0].feature.north.coordinate_value == 157500.5
+    assert coordinates[0].feature.east.coordinate_value == Decimal("615790.6")
+    assert coordinates[0].feature.north.coordinate_value == Decimal("157500.5")
 
     lines = _create_simple_lines(["2600000.6 / 1200000.5"])
     coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
-    assert coordinates[0].feature.east.coordinate_value == 2600000.6
-    assert coordinates[0].feature.north.coordinate_value == 1200000.5
+    assert coordinates[0].feature.east.coordinate_value == Decimal("2600000.6")
+    assert coordinates[0].feature.north.coordinate_value == Decimal("1200000.5")
 
     # From ZH 680270004-bp.pdf
     lines = _create_simple_lines(["680' '100/270'120"])
     coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
-    assert coordinates[0].feature.east.coordinate_value == 680100
-    assert coordinates[0].feature.north.coordinate_value == 270120
+    assert coordinates[0].feature.east.coordinate_value == Decimal(680100)
+    assert coordinates[0].feature.north.coordinate_value == Decimal(270120)
 
 
 def test_get_double_decimal_coordinates():
     """Test the extraction of decimal coordinates from a list of text lines."""
     lines = _create_simple_lines(["615.790.64 / 157.500.55"])
     coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
-    assert coordinates[0].feature.east.coordinate_value == 615790.64
-    assert coordinates[0].feature.north.coordinate_value == 157500.55
+    assert coordinates[0].feature.east.coordinate_value == Decimal("615790.64")
+    assert coordinates[0].feature.north.coordinate_value == Decimal("157500.55")
 
     lines = _create_simple_lines(["2600000.64 / 1200000.55"])
     coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
-    assert coordinates[0].feature.east.coordinate_value == 2600000.64
-    assert coordinates[0].feature.north.coordinate_value == 1200000.55
+    assert coordinates[0].feature.east.coordinate_value == Decimal("2600000.64")
+    assert coordinates[0].feature.north.coordinate_value == Decimal("1200000.55")

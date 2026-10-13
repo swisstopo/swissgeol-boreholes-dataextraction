@@ -21,7 +21,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api.v1.endpoints.classify_all import classify
-from app.common.schemas import ClassifyRequest
+from app.common.schemas import ClassificationConsolidationClasses, ClassifyRequest
 from app.main import app
 from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.cementation import CementationSystem
@@ -32,6 +32,9 @@ from classification.utils.datasets.lithology import LithologySystem
 CONSOLIDATED_DESCRIPTION = "Kalkstein, hellgrau, geschichtet, feinkoernig, stark verkittet"
 #   lithology=unconsolidated, cementation=not_specified, grain_angularity=[angular, sub_angular]
 UNCONSOLIDATED_DESCRIPTION = "Siltiger Kies mit Sand und Steinen, braun, eckig bis kantengerundet"
+#   lithology=sandstone (consolidated), cementation=not_specified — cementation IS a relevant,
+#   loaded task here, but predicts only not_specified.
+CONSOLIDATED_NOT_SPECIFIED_DESCRIPTION = "Sandstein, grau"
 
 _REAL_TASK_NAMES = ("lithology", "cementation", "grain_angularity")
 
@@ -102,6 +105,7 @@ def test_classify_consolidated_rock_description(real_bert_models):
     """A real consolidated-rock description runs the lithology and cementation heads (both loaded)."""
     response = classify(ClassifyRequest(description=CONSOLIDATED_DESCRIPTION), real_bert_models)
 
+    assert response.consolidation == ClassificationConsolidationClasses.consolidated
     assert response.lithology == LithologySystem.LithologyClasses.limestone
     assert response.cementation == CementationSystem.CementationClasses.strongly_cemented
     # alteration_degree_consolidated/color/mineral_components/accessory_components are also
@@ -117,6 +121,7 @@ def test_classify_unconsolidated_sediment_description(real_bert_models, caplog):
     with caplog.at_level(logging.WARNING):
         response = classify(ClassifyRequest(description=UNCONSOLIDATED_DESCRIPTION), real_bert_models)
 
+    assert response.consolidation == ClassificationConsolidationClasses.unconsolidated
     assert response.grain_angularity == [
         GrainAngularitySystem.GrainAngularityClasses.angular,
         GrainAngularitySystem.GrainAngularityClasses.sub_angular,
@@ -153,4 +158,23 @@ def test_post_classify_returns_predictions_when_bert_models_loaded(
     body = response.json()
     assert body["lithology"] == "limestone"
     assert body["cementation"] == "strongly_cemented"
-    assert body["color"] is None
+    assert "color" not in body  # color is now omitted, not null
+
+
+def test_post_classify_omits_field_that_ran_but_predicted_not_specified(
+    test_client: TestClient, bert_models_state, real_bert_models
+):
+    """A relevant, loaded task that predicts only not_specified must be omitted, not null.
+
+    Unlike `color` above (omitted because it's not loaded at all), `cementation` here is loaded
+    and relevant to the consolidated branch, runs, and predicts not_specified.
+    """
+    app.state.bert_models = real_bert_models
+
+    request = ClassifyRequest(description=CONSOLIDATED_NOT_SPECIFIED_DESCRIPTION)
+    response = test_client.post("/api/V1/classify", content=request.model_dump_json())
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["lithology"] == "sandstone"
+    assert "cementation" not in body

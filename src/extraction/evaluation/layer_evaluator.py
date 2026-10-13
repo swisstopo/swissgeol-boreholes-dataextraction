@@ -1,10 +1,11 @@
 """Classes for evaluating the layer and depth predictions of a borehole."""
 
 import logging
-from collections import defaultdict
 from collections.abc import Callable
 
 import Levenshtein
+import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 from core.benchmark_utils import Metrics
 from core.ground_truth import GroundTruthBorehole, GroundTruthLayer
@@ -113,7 +114,7 @@ class LayerEvaluator:
             tp = 0
             total_predictions = 0
 
-            layers = borehole_data.layers.layers if borehole_data.layers else []
+            layers = borehole_data.layers if borehole_data.layers else []
             for layer in layers:
                 if per_layer_filter(layer):
                     total_predictions += 1
@@ -167,7 +168,7 @@ class LayerEvaluator:
 
         for borehole_data in file_predictions.boreholes:
             if borehole_data.layers:
-                predicted_layers = borehole_data.layers.layers
+                predicted_layers = borehole_data.layers
 
                 for pred in predicted_layers:
                     pred.material_description.is_correct = False
@@ -226,51 +227,63 @@ class LayerEvaluator:
         all_ground_truth_layers = {
             idx: borehole_data.layers for idx, borehole_data in enumerate(ground_truth_for_file)
         }
-        borehole_layers = [bh.layers_in_borehole for bh in file_predictions.borehole_predictions_list]
-        pred_vs_gt_matching_score = defaultdict(dict)
+        borehole_layers = [bh.layers for bh in file_predictions.borehole_predictions_list]
+        cost_matrix_dimension = max(len(borehole_layers), len(all_ground_truth_layers))
+        costs = np.zeros((cost_matrix_dimension, cost_matrix_dimension))
         for gt_idx, ground_truth_layers in all_ground_truth_layers.items():
             for pred_idx, predicted_layers in enumerate(borehole_layers):
-                matching_score, _ = LayerEvaluator.compute_borehole_affinity_and_mapping(
-                    ground_truth_layers, predicted_layers.layers, score_layer
-                )
-                pred_vs_gt_matching_score[gt_idx][pred_idx] = matching_score
+                prediction_depth_values = set()
+                for layer in predicted_layers:
+                    if layer.depths is not None:
+                        if layer.depths.start is not None:
+                            prediction_depth_values.add(layer.depths.start.value)
+                        if layer.depths.end is not None:
+                            prediction_depth_values.add(layer.depths.end.value)
 
-        # matching of all the boreholes detected to a borehole in the ground truth
+                ground_truth_depth_values = set()
+                for layer in ground_truth_layers:
+                    if layer.depth_interval.start is not None:
+                        ground_truth_depth_values.add(layer.depth_interval.start)
+                    if layer.depth_interval.end is not None:
+                        ground_truth_depth_values.add(layer.depth_interval.end)
+
+                depth_value_tp = len(prediction_depth_values & ground_truth_depth_values)
+                depth_value_f1 = Metrics(
+                    tp=depth_value_tp,
+                    fp=len(prediction_depth_values) - depth_value_tp,
+                    fn=len(ground_truth_depth_values) - depth_value_tp,
+                ).f1
+
+                full_prediction_descriptions = "\n".join(layer.material_description.text for layer in predicted_layers)
+                full_ground_truth_descriptions = "\n".join(
+                    layer.material_description
+                    for layer in ground_truth_layers
+                    if layer.material_description is not None
+                )
+                material_description_similarity = Levenshtein.ratio(
+                    full_prediction_descriptions, full_ground_truth_descriptions
+                )
+
+                costs[pred_idx, gt_idx] = -(depth_value_f1 + material_description_similarity)
+
+        # find optimal matching, minimizing the overall cost
+        prediction_indices, ground_truth_indices = linear_sum_assignment(costs)
+        matching = dict(zip(prediction_indices, ground_truth_indices, strict=False))
+
         matched_boreholes = []
-        assigned_preds = set()
-        while pred_vs_gt_matching_score:
-            max_score = float("-inf")
-            for gt_idx, pred_scores in pred_vs_gt_matching_score.items():
-                for pred_idx, score in pred_scores.items():
-                    if score > max_score and pred_idx not in assigned_preds:  # can't assign the same pred twice
-                        max_score = score
-                        best_matches = (gt_idx, pred_idx)
+        for prediction_index, ground_truth_index in matching.items():
+            if prediction_index < len(file_predictions.borehole_predictions_list):
+                prediction = file_predictions.borehole_predictions_list[prediction_index]
+            else:
+                prediction = None
 
-            gt_best_idx, pred_best_idx = best_matches
-            matched_boreholes.append(
-                BoreholePredictionsWithGroundTruth(
-                    file_predictions.borehole_predictions_list[pred_best_idx], ground_truth_for_file[gt_best_idx]
-                )
-            )
-            assigned_preds.add(pred_best_idx)  # Mark this pred_idx as used
+            if ground_truth_index < len(ground_truth_for_file):
+                ground_truth = ground_truth_for_file[ground_truth_index]
+            else:
+                ground_truth = None
 
-            # Remove the matched gt_idx from consideration
-            del pred_vs_gt_matching_score[gt_best_idx]
+            matched_boreholes.append(BoreholePredictionsWithGroundTruth(prediction, ground_truth))
 
-            if len(assigned_preds) == len(borehole_layers):
-                # all preds have been assigned
-                break
-
-        # add entries with missing predictions for all unmatched ground truth boreholes (will count as false negatives)
-        for gt_idx in pred_vs_gt_matching_score:
-            matched_boreholes.append(
-                BoreholePredictionsWithGroundTruth(predictions=None, ground_truth=ground_truth_for_file[gt_idx])
-            )
-
-        # add entries with missing ground truth for all unmatched prediction boreholes (will count as false positives)
-        for index, pred in enumerate(file_predictions.borehole_predictions_list):
-            if index not in assigned_preds:
-                matched_boreholes.append(BoreholePredictionsWithGroundTruth(predictions=pred, ground_truth=None))
         return matched_boreholes
 
     @staticmethod

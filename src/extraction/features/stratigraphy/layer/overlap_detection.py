@@ -8,7 +8,8 @@ from dataclasses import dataclass
 
 import Levenshtein
 
-from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer
+from extraction.features.extracted_borehole import ExtractedBorehole
+from extraction.features.stratigraphy.layer.layer import Layer
 
 logger = logging.getLogger(__name__)
 
