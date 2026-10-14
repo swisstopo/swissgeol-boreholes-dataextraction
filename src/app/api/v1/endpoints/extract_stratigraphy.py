@@ -77,7 +77,7 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
 
         # 3. extract layers
         text_lines = extract_text_lines(page)
-        long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
+        long_or_horizontal_lines, all_geometric_lines = extract_lines(page, text_lines, line_detection_params)
 
         # Detect table structures on the page
         table_structures = detect_table_structures(
