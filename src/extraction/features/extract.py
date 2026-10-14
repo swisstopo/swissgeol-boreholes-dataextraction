@@ -446,7 +446,7 @@ class BoreholeExtractor:
         # Detect and filter potential diagonals
         diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
         diagonals = self._filter_diagonals(
-            diagonals, description_lines, min_text_height / 2, max_text_height * 3, line_detection_params
+            diagonals, description_lines, min_text_height, max_text_height * 3, line_detection_params
         )
         return diagonals
 
@@ -490,7 +490,7 @@ class BoreholeExtractor:
     def _filter_diagonals(
         g_lines: list[Line],
         description_lines: list[TextLine],
-        min_vertical_dist: float,
+        min_line_length: float,
         max_horizontal_dist: float,
         line_detection_params: dict,
     ) -> list[Line]:
@@ -504,7 +504,7 @@ class BoreholeExtractor:
                 and any(line.rect.contains(g_line.end.tuple) for line in description_lines)
             )  # lines on text are letters that have segments identified (like W)
             and not g_line.is_vertical(angle_threshold)  # too many other lines are vertical
-            and min_vertical_dist < abs(g_line.end.y - g_line.start.y)  # near horizontals are likely noise
+            and g_line.length >= min_line_length
             and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist  # lines too long are likely other parasites
         ]
 
