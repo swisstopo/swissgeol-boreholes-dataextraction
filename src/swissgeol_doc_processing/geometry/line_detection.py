@@ -127,9 +127,6 @@ def extract_lines(
     #
     # lines = detect_lines_hough(page, hough_params=line_detection_params["hough"])
 
-    if not lines:
-        return [], []
-
     def grow_rect(rect: pymupdf.Rect, delta: float) -> pymupdf.Rect:
         return pymupdf.Rect(rect.x0 - delta, rect.y0 - delta, rect.x1 + delta, rect.y1 + delta)
 
@@ -143,7 +140,7 @@ def extract_lines(
             y1=max(line.start.y, line.end.y),
         )
         matching_text_lines = line_rtree.query(line_bbox)
-        # grow each word's rect by 1 point the line detection algorithm is only accurate to +/- 1 pixel
+        # grow each word's rect by 1 point because the line detection algorithm is only accurate to +/- 1 pixel
         return all(
             line.length > word.rect.height or not grow_rect(word.rect, 1).contains(line_bbox)
             for text_line in matching_text_lines
@@ -151,6 +148,8 @@ def extract_lines(
         )
 
     lines = [line for line in lines if line_is_valid(line)]
+    if not lines:
+        return [], []
 
     merging_params = line_detection_params["line_merging_params"]
 
