@@ -578,14 +578,13 @@ class BoreholeExtractor:
         Returns:
             list[Line]: The diagonal connectors.
         """
-        x0s = [line.rect.x0 for line in description_lines]
-        min_x0, max_x0 = min(x0s), max(x0s)
+        min_x0 = min([line.rect.x0 for line in description_lines])
         median_text_height = statistics.median([line.rect.height for line in description_lines])
         min_y0 = min([line.rect.y0 for line in description_lines])
         max_y1 = max([line.rect.y1 for line in description_lines])
 
         # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
-        search_zone = pymupdf.Rect(min_x0 - median_text_height, min_y0, max_x0 + median_text_height / 3, max_y1)
+        search_zone = pymupdf.Rect(min_x0 - median_text_height, min_y0, min_x0 + 3 * median_text_height, max_y1)
         if self.strip_logs:
             left_strip_x1s = [sl.bbox.x1 for sl in self.strip_logs if sl.bbox.x0 < search_zone.x0]
             if left_strip_x1s:
