@@ -2,6 +2,7 @@
 
 import logging
 import re
+import statistics
 
 import pymupdf
 
@@ -579,13 +580,12 @@ class BoreholeExtractor:
         """
         x0s = [line.rect.x0 for line in description_lines]
         min_x0, max_x0 = min(x0s), max(x0s)
-        text_heights = [line.rect.height for line in description_lines]
-        min_text_height, max_text_height = min(text_heights), max(text_heights)
+        median_text_height = statistics.median([line.rect.height for line in description_lines])
         min_y0 = min([line.rect.y0 for line in description_lines])
         max_y1 = max([line.rect.y1 for line in description_lines])
 
         # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
-        search_zone = pymupdf.Rect(min_x0 - max_text_height, min_y0, max_x0 + max_text_height / 3, max_y1)
+        search_zone = pymupdf.Rect(min_x0 - median_text_height, min_y0, max_x0 + median_text_height / 3, max_y1)
         if self.strip_logs:
             left_strip_x1s = [sl.bbox.x1 for sl in self.strip_logs if sl.bbox.x0 < search_zone.x0]
             if left_strip_x1s:
@@ -595,7 +595,7 @@ class BoreholeExtractor:
         # Detect and filter potential diagonals
         diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
         diagonals = self._filter_diagonals(
-            diagonals, description_lines, min_text_height / 2, max_text_height * 3, line_detection_params
+            diagonals, median_text_height / 2, median_text_height * 3, line_detection_params
         )
         return diagonals
 
@@ -638,7 +638,6 @@ class BoreholeExtractor:
     @staticmethod
     def _filter_diagonals(
         g_lines: list[Line],
-        description_lines: list[TextLine],
         min_vertical_dist: float,
         max_horizontal_dist: float,
         line_detection_params: dict,
@@ -648,11 +647,7 @@ class BoreholeExtractor:
         return [
             g_line
             for g_line in g_lines
-            if not (
-                any(line.rect.contains(g_line.start.tuple) for line in description_lines)
-                and any(line.rect.contains(g_line.end.tuple) for line in description_lines)
-            )  # lines on text are letters that have segments identified (like W)
-            and not g_line.is_vertical(angle_threshold)  # too many other lines are vertical
+            if not g_line.is_vertical(angle_threshold)  # too many other lines are vertical
             and min_vertical_dist < abs(g_line.end.y - g_line.start.y)  # near horizontals are likely noise
             and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist  # lines too long are likely other parasites
         ]
