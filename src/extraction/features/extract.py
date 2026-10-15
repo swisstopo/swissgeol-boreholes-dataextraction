@@ -34,7 +34,6 @@ from extraction.features.stratigraphy.sidebar.extractor.protocol_sidebar_extract
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
-from swissgeol_doc_processing.geometry.line_detection import find_diags_ending_in_zone
 from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
 from swissgeol_doc_processing.text.find_description import get_description_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
@@ -585,14 +584,22 @@ class BoreholeExtractor:
 
         # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
         search_zone = pymupdf.Rect(min_x0 - median_text_height, min_y0, min_x0 + 3 * median_text_height, max_y1)
+        strip_log_edge = None
         if self.strip_logs:
             left_strip_x1s = [sl.bbox.x1 for sl in self.strip_logs if sl.bbox.x0 < search_zone.x0]
             if left_strip_x1s:
                 # Shrink left boundary to the rightmost edge of intersecting strips
-                search_zone.x0 = max(search_zone.x0, max(left_strip_x1s))
+                strip_log_edge = max(left_strip_x1s)
+                search_zone.x0 = max(search_zone.x0, strip_log_edge)
 
         # Detect and filter potential diagonals
-        diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
+        diagonals = [
+            g_line
+            for g_line in self.all_geometric_lines
+            if search_zone.contains(g_line.end.tuple)
+            and (strip_log_edge is None or g_line.start.x > strip_log_edge - median_text_height / 3)
+        ]
+
         diagonals = self._filter_diagonals(
             diagonals, median_text_height / 3, median_text_height * 3, line_detection_params
         )
