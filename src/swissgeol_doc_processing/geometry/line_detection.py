@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 from swissgeol_doc_processing.geometry.geometric_line_utilities import merge_parallel_lines_quadtree
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.util import line_from_array
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 
 load_dotenv()
 
@@ -99,11 +101,16 @@ def detect_lines_hough(page: pymupdf.Page, hough_params: dict) -> list[Line]:
     return [line_from_array(line, scale_ratio) for line in lines]
 
 
-def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> tuple[list[Line], list[Line]]:
+def extract_lines(
+    page: pymupdf.Page, text_lines: list[TextLine], line_detection_params: dict
+) -> tuple[list[Line], list[Line]]:
     """Extract lines from a pdf page.
+
+    Geometric lines that fall entirely within a single word of some text line will be ignored.
 
     Args:
         page (pymupdf.Page): The page to extract lines from.
+        text_lines (list[TextLine]): List of text lines.
         line_detection_params (dict): The parameters for line detection.
 
     Returns:
@@ -120,6 +127,27 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> tuple[list
     #
     # lines = detect_lines_hough(page, hough_params=line_detection_params["hough"])
 
+    def grow_rect(rect: pymupdf.Rect, delta: float) -> pymupdf.Rect:
+        return pymupdf.Rect(rect.x0 - delta, rect.y0 - delta, rect.x1 + delta, rect.y1 + delta)
+
+    line_rtree = TextLineRTree(text_lines)
+
+    def line_is_valid(line: Line) -> bool:
+        line_bbox = pymupdf.Rect(
+            x0=min(line.start.x, line.end.x),
+            y0=min(line.start.y, line.end.y),
+            x1=max(line.start.x, line.end.x),
+            y1=max(line.start.y, line.end.y),
+        )
+        matching_text_lines = line_rtree.query(line_bbox)
+        # grow each word's rect by 1 point because the line detection algorithm is only accurate to +/- 1 pixel
+        return all(
+            line.length > word.rect.height or not grow_rect(word.rect, 1).contains(line_bbox)
+            for text_line in matching_text_lines
+            for word in text_line.words
+        )
+
+    lines = [line for line in lines if line_is_valid(line)]
     if not lines:
         return [], []
 

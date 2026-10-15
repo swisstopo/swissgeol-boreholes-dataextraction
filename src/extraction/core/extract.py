@@ -131,7 +131,7 @@ def extract(
             logger.info(f"Processing page {page_number}")
 
             text_lines = extract_text_lines(page)
-            long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
+            long_or_horizontal_lines, all_geometric_lines = extract_lines(page, text_lines, line_detection_params)
             name_entries = extract_borehole_names(text_lines, name_detection_params)
             elevation_entries = [e for e in metadata.elevations if e.page_number == page_number]
             coordinate_entries = [c for c in metadata.coordinates if c.page_number == page_number]
