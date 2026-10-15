@@ -583,21 +583,19 @@ class BoreholeExtractor:
         max_y1 = max([line.rect.y1 for line in description_lines])
 
         # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
-        search_zone = pymupdf.Rect(min_x0 - median_text_height, min_y0, min_x0 + 3 * median_text_height, max_y1)
-        strip_log_edge = None
-        if self.strip_logs:
-            left_strip_x1s = [sl.bbox.x1 for sl in self.strip_logs if sl.bbox.x0 < search_zone.x0]
-            if left_strip_x1s:
-                # Shrink left boundary to the rightmost edge of intersecting strips
-                strip_log_edge = max(left_strip_x1s)
-                search_zone.x0 = max(search_zone.x0, strip_log_edge)
+        start_search_zone = pymupdf.Rect(min_x0 - 6 * median_text_height, min_y0, min_x0, max_y1)
+        end_search_zone = pymupdf.Rect(min_x0 - median_text_height, min_y0, min_x0 + 3 * median_text_height, max_y1)
+        for strip_log in self.strip_logs:
+            # Shrink left boundaries to the rightmost edge of intersecting strips
+            if strip_log.bbox.intersects(start_search_zone):
+                start_search_zone.x0 = max(start_search_zone.x0, strip_log.bbox.x1 - median_text_height / 4)
+            if strip_log.bbox.intersects(end_search_zone):
+                end_search_zone.x0 = max(end_search_zone.x0, strip_log.bbox.x1)
 
-        # Detect and filter potential diagonals
         diagonals = [
             g_line
             for g_line in self.all_geometric_lines
-            if search_zone.contains(g_line.end.tuple)
-            and (strip_log_edge is None or g_line.start.x > strip_log_edge - median_text_height / 3)
+            if start_search_zone.contains(g_line.start.tuple) and end_search_zone.contains(g_line.end.tuple)
         ]
 
         diagonals = self._filter_diagonals(
