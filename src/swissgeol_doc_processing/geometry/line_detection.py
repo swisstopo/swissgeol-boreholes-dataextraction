@@ -145,7 +145,7 @@ def extract_lines(
         matching_text_lines = line_rtree.query(line_bbox)
         # grow each word's rect by 1 point the line detection algorithm is only accurate to +/- 1 pixel
         return all(
-            not grow_rect(word.rect, 1).contains(line_bbox)
+            line.length > word.rect.height or not grow_rect(word.rect, 1).contains(line_bbox)
             for text_line in matching_text_lines
             for word in text_line.words
         )
