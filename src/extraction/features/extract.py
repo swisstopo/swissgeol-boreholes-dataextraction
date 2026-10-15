@@ -594,7 +594,7 @@ class BoreholeExtractor:
         # Detect and filter potential diagonals
         diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
         diagonals = self._filter_diagonals(
-            diagonals, median_text_height / 2, median_text_height * 3, line_detection_params
+            diagonals, median_text_height / 3, median_text_height * 3, line_detection_params
         )
         return diagonals
 
