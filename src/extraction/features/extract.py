@@ -45,7 +45,7 @@ from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_affinity import get_line_affinity
 from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
-from swissgeol_doc_processing.utils.strip_log_detection import StripLog
+from swissgeol_doc_processing.utils.strip_log_detection import StripLog, StripLogSection
 from swissgeol_doc_processing.utils.table_detection import TableStructure, middle_line
 
 logger = logging.getLogger(__name__)
@@ -582,25 +582,47 @@ class BoreholeExtractor:
         min_y0 = min([line.rect.y0 for line in description_lines])
         max_y1 = max([line.rect.y1 for line in description_lines])
 
-        # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
-        start_search_zone = pymupdf.Rect(min_x0 - 6 * median_text_height, min_y0, min_x0, max_y1)
-        end_search_zone = pymupdf.Rect(min_x0 - median_text_height, min_y0, min_x0 + 3 * median_text_height, max_y1)
-        for strip_log in self.strip_logs:
-            # Shrink left boundaries to the rightmost edge of intersecting strips
-            if strip_log.bbox.intersects(start_search_zone):
-                start_search_zone.x0 = max(start_search_zone.x0, strip_log.bbox.x1 - median_text_height / 4)
-            if strip_log.bbox.intersects(end_search_zone):
-                end_search_zone.x0 = max(end_search_zone.x0, strip_log.bbox.x1)
+        start_min_x0 = min_x0 - 6 * median_text_height
 
+        # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
+        end_search_zone = pymupdf.Rect(min_x0 - median_text_height, min_y0, min_x0 + 3 * median_text_height, max_y1)
+
+        def strip_log_section_conflicts(strip_log_section: StripLogSection, line: Line) -> bool:
+            # check with individual strip log sections instead of the entire strip log bounding box, in order to be
+            # more accurate on skewed pages e.g. GeoQuat A359.pdf
+            relevant_strip_log = (
+                strip_log_section.bbox.y0 <= line.start.y <= strip_log_section.bbox.y1
+                and strip_log_section.bbox.x0 < line.end.x
+            )
+            # allow a small margin, so that diagonal can start on the right-hand edge of the strip log
+            return relevant_strip_log and line.start.x < strip_log_section.bbox.x1 - median_text_height / 4
+
+        # vertical and horizontal lines are likely noise
+        angle_threshold = line_detection_params["diagonals_params"]["angle_threshold"]
         diagonals = [
             g_line
             for g_line in self.all_geometric_lines
-            if start_search_zone.contains(g_line.start.tuple) and end_search_zone.contains(g_line.end.tuple)
+            if start_min_x0 <= g_line.start.x <= min_x0
+            and end_search_zone.contains(g_line.end.tuple)
+            and not any(
+                strip_log_section_conflicts(section, g_line)
+                for strip_log in self.strip_logs
+                for section in strip_log.sections
+            )
+            and not g_line.is_vertical(angle_threshold)
+            and not g_line.is_horizontal(angle_threshold)
+            and g_line.length > median_text_height / 2
         ]
 
-        diagonals = self._filter_diagonals(
-            diagonals, median_text_height / 3, median_text_height * 3, line_detection_params
-        )
+        if len(diagonals):
+            # all diagonals are expected to have a similar width, outliers are thrown out
+            median_horizontal_width = statistics.median([diagonal.end.x - diagonal.start.x for diagonal in diagonals])
+            diagonals = [
+                diagonal
+                for diagonal in diagonals
+                if 0.5 * median_horizontal_width < diagonal.end.x - diagonal.start.x < median_horizontal_width * 1.5
+            ]
+
         return diagonals
 
     def _extract_borehole_without_sidebar(self) -> BoreholeCandidate | None:
@@ -638,23 +660,6 @@ class BoreholeExtractor:
         filtered_candidates = self._filter_by_intersections(filtered_candidates)
 
         return filtered_candidates
-
-    @staticmethod
-    def _filter_diagonals(
-        g_lines: list[Line],
-        min_vertical_dist: float,
-        max_horizontal_dist: float,
-        line_detection_params: dict,
-    ) -> list[Line]:
-        """Filters the diagonal lines identified."""
-        angle_threshold = line_detection_params["diagonals_params"]["angle_threshold"]
-        return [
-            g_line
-            for g_line in g_lines
-            if not g_line.is_vertical(angle_threshold)  # too many other lines are vertical
-            and min_vertical_dist < abs(g_line.end.y - g_line.start.y)  # near horizontals are likely noise
-            and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist  # lines too long are likely other parasites
-        ]
 
     def extract_sidebars_with_quality_metrics(self) -> SidebarQualityMetrics:
         """Extract all sidebars with quality metrics for classification purposes.

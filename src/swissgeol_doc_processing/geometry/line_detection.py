@@ -158,13 +158,10 @@ def extract_lines(
 
     # return lines
     tol = merging_params["merging_tolerance"] * scaling_factor
-    angle_tol = merging_params["angle_threshold"]
+    angle_threshold = merging_params["angle_threshold"]
     min_line_length = merging_params["min_line_length"] * scaling_factor
-    horizontal_slope_tolerance = merging_params["horizontal_slope_tolerance"]
-    merged = merge_parallel_lines_quadtree(lines, tol=tol, angle_threshold=angle_tol)
-    filtered = [
-        line for line in merged if line.length >= min_line_length or line.is_horizontal(horizontal_slope_tolerance)
-    ]
+    merged = merge_parallel_lines_quadtree(lines, tol=tol, angle_threshold=angle_threshold)
+    filtered = [line for line in merged if line.length >= min_line_length or line.is_horizontal(angle_threshold)]
     return filtered, merged
 
 
