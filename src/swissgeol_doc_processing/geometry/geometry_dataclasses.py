@@ -173,9 +173,9 @@ class Line:
         """Calculate the slope of the line."""
         return (self.end.y - self.start.y) / (self.end.x - self.start.x) if self.end.x - self.start.x != 0 else np.inf
 
-    def is_horizontal(self, horizontal_slope_tolerance) -> bool:
+    def is_horizontal(self, angle_tolerance) -> bool:
         """Checks if a line is horizontal."""
-        return abs(self.slope) <= horizontal_slope_tolerance
+        return abs(self.angle) <= angle_tolerance
 
     def is_vertical(self, angle_tolerance) -> bool:
         """Checks if a line is vertical."""
