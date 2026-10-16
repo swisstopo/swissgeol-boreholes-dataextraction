@@ -2,6 +2,7 @@
 
 import logging
 import re
+import statistics
 
 import pymupdf
 
@@ -33,7 +34,6 @@ from extraction.features.stratigraphy.sidebar.extractor.protocol_sidebar_extract
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
-from swissgeol_doc_processing.geometry.line_detection import find_diags_ending_in_zone
 from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
 from swissgeol_doc_processing.text.find_description import get_description_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
@@ -45,7 +45,7 @@ from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_affinity import get_line_affinity
 from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
-from swissgeol_doc_processing.utils.strip_log_detection import StripLog
+from swissgeol_doc_processing.utils.strip_log_detection import StripLog, StripLogSection
 from swissgeol_doc_processing.utils.table_detection import TableStructure, middle_line
 
 logger = logging.getLogger(__name__)
@@ -577,26 +577,52 @@ class BoreholeExtractor:
         Returns:
             list[Line]: The diagonal connectors.
         """
-        x0s = [line.rect.x0 for line in description_lines]
-        min_x0, max_x0 = min(x0s), max(x0s)
-        text_heights = [line.rect.height for line in description_lines]
-        min_text_height, max_text_height = min(text_heights), max(text_heights)
+        min_x0 = min([line.rect.x0 for line in description_lines])
+        median_text_height = statistics.median([line.rect.height for line in description_lines])
         min_y0 = min([line.rect.y0 for line in description_lines])
         max_y1 = max([line.rect.y1 for line in description_lines])
 
-        # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
-        search_zone = pymupdf.Rect(min_x0 - max_text_height, min_y0, max_x0 + max_text_height / 3, max_y1)
-        if self.strip_logs:
-            left_strip_x1s = [sl.bbox.x1 for sl in self.strip_logs if sl.bbox.x0 < search_zone.x0]
-            if left_strip_x1s:
-                # Shrink left boundary to the rightmost edge of intersecting strips
-                search_zone.x0 = max(search_zone.x0, max(left_strip_x1s))
+        start_min_x0 = min_x0 - 6 * median_text_height
 
-        # Detect and filter potential diagonals
-        diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
-        diagonals = self._filter_diagonals(
-            diagonals, description_lines, min_text_height / 2, max_text_height * 3, line_detection_params
-        )
+        # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
+        end_search_zone = pymupdf.Rect(min_x0 - median_text_height, min_y0, min_x0 + 3 * median_text_height, max_y1)
+
+        def strip_log_section_conflicts(strip_log_section: StripLogSection, line: Line) -> bool:
+            # check with individual strip log sections instead of the entire strip log bounding box, in order to be
+            # more accurate on skewed pages e.g. GeoQuat A359.pdf
+            relevant_strip_log = (
+                strip_log_section.bbox.y0 <= line.start.y <= strip_log_section.bbox.y1
+                and strip_log_section.bbox.x0 < line.end.x
+            )
+            # allow a small margin, so that diagonal can start on the right-hand edge of the strip log
+            return relevant_strip_log and line.start.x < strip_log_section.bbox.x1 - median_text_height / 4
+
+        # vertical and horizontal lines are likely noise
+        angle_threshold = line_detection_params["diagonals_params"]["angle_threshold"]
+        diagonals = [
+            g_line
+            for g_line in self.all_geometric_lines
+            if start_min_x0 <= g_line.start.x <= min_x0
+            and end_search_zone.contains(g_line.end.tuple)
+            and not any(
+                strip_log_section_conflicts(section, g_line)
+                for strip_log in self.strip_logs
+                for section in strip_log.sections
+            )
+            and not g_line.is_vertical(angle_threshold)
+            and not g_line.is_horizontal(angle_threshold)
+            and g_line.length > median_text_height / 2
+        ]
+
+        if len(diagonals):
+            # all diagonals are expected to have a similar width, outliers are thrown out
+            median_horizontal_width = statistics.median([diagonal.end.x - diagonal.start.x for diagonal in diagonals])
+            diagonals = [
+                diagonal
+                for diagonal in diagonals
+                if 0.5 * median_horizontal_width < diagonal.end.x - diagonal.start.x < median_horizontal_width * 1.5
+            ]
+
         return diagonals
 
     def _extract_borehole_without_sidebar(self) -> BoreholeCandidate | None:
@@ -634,28 +660,6 @@ class BoreholeExtractor:
         filtered_candidates = self._filter_by_intersections(filtered_candidates)
 
         return filtered_candidates
-
-    @staticmethod
-    def _filter_diagonals(
-        g_lines: list[Line],
-        description_lines: list[TextLine],
-        min_vertical_dist: float,
-        max_horizontal_dist: float,
-        line_detection_params: dict,
-    ) -> list[Line]:
-        """Filters the diagonal lines identified."""
-        angle_threshold = line_detection_params["diagonals_params"]["angle_threshold"]
-        return [
-            g_line
-            for g_line in g_lines
-            if not (
-                any(line.rect.contains(g_line.start.tuple) for line in description_lines)
-                and any(line.rect.contains(g_line.end.tuple) for line in description_lines)
-            )  # lines on text are letters that have segments identified (like W)
-            and not g_line.is_vertical(angle_threshold)  # too many other lines are vertical
-            and min_vertical_dist < abs(g_line.end.y - g_line.start.y)  # near horizontals are likely noise
-            and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist  # lines too long are likely other parasites
-        ]
 
     def extract_sidebars_with_quality_metrics(self) -> SidebarQualityMetrics:
         """Extract all sidebars with quality metrics for classification purposes.

@@ -84,7 +84,7 @@ def get_groundwater_symbol_upper_lines(
         horizontals_near_entry = [
             g_line
             for g_line in geometric_lines
-            if g_line.is_horizontal(merging_params["horizontal_slope_tolerance"])
+            if g_line.is_horizontal(merging_params["angle_threshold"])
             and is_near_entry(g_line, *text_line.rect)
             and g_line.length < 3 * text_width
         ]
