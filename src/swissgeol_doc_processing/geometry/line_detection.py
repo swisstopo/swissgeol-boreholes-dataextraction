@@ -163,16 +163,3 @@ def extract_lines(
     merged = merge_parallel_lines_quadtree(lines, tol=tol, angle_threshold=angle_threshold)
     filtered = [line for line in merged if line.length >= min_line_length or line.is_horizontal(angle_threshold)]
     return filtered, merged
-
-
-def find_diags_ending_in_zone(lines: list[Line], line_search_zone: pymupdf.Rect) -> list[Line]:
-    """Find diagonal lines ending in a given zone (note: the end of the line is always on the right).
-
-    Args:
-        lines (list[Line]): The lines to search in.
-        line_search_zone (pymupdf.Rect): The zone to search for line endings in.
-
-    Returns:
-        list[Line]: The lines ending in the given zone.
-    """
-    return [g_line for g_line in lines if line_search_zone.contains(g_line.end.tuple)]
