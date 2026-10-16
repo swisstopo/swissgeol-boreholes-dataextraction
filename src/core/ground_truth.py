@@ -6,7 +6,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, TypeAdapter, model_serializer
+from pydantic import BaseModel, TypeAdapter, field_validator, model_serializer
 
 from swissgeol_doc_processing.utils.json import JsonFloatDecimal
 
@@ -47,6 +47,12 @@ class GroundTruthUnconsolidated(ExcludeNoneBaseModel):
     other: list[str] | None = None
     primary_color: str | None = None
     uscs: list[str] | None = None
+
+    @field_validator("uscs", mode="before")
+    @classmethod
+    def validate_uscs(cls, value: str | list[str] | None) -> list[str] | None:
+        """Ensure the USCS field is a list."""
+        return [value] if isinstance(value, str) else value
 
 
 class GroundTruthLayerDepth(BaseModel):

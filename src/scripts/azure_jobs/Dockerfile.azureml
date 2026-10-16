@@ -1,12 +1,14 @@
 FROM mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04:latest
 
 WORKDIR /tmp/build
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml ./
 
 RUN pip install uv
-RUN uv export --no-emit-project --no-hashes \
+# Resolve Linux/CUDA-only requirements from pyproject.toml (does not use uv.lock, versions may drift)
+RUN uv pip compile pyproject.toml \
     --extra deep-learning \
     --extra experiment-tracking \
     --extra azure-remote \
+    --python-platform x86_64-manylinux_2_28 \
     -o requirements.txt && \
     uv pip install --system -r requirements.txt

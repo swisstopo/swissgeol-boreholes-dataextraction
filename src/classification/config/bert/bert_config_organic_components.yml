@@ -22,6 +22,8 @@ test_sets:
       - geoquat_ground_truth.json
       - nagra_ground_truth.json
       - zurich_ground_truth.json
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/organic_components_extra_ground_truth.json
   deepwells_organic_components:
     classification_system: organic_components
     ground_truths:
@@ -38,6 +40,14 @@ test_sets:
     classification_system: organic_components
     ground_truths:
       - zurich_ground_truth.json
+  extra_negative_organic_components:
+    classification_system: organic_components
+    ground_truths:
+      - bert_extra/negative_ground_truth.json
+  extra_keywords_organic_components:
+    classification_system: organic_components
+    ground_truths:
+      - bert_extra/organic_components_extra_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:
