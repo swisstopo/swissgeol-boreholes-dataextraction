@@ -2,6 +2,7 @@
 
 import dataclasses
 import re
+import statistics
 
 import pymupdf
 
@@ -135,8 +136,11 @@ class MaterialDescriptionExtractor:
             if line.rect.y0 >= best_y0 and line.rect.y1 <= best_y1
             if min_description_x0 < line.rect.x0 < max_description_x0
         ]
+        if not good_lines:
+            return None
         best_x0 = min([line.rect.x0 for line in good_lines])
         best_x1 = max([line.rect.x1 for line in good_lines])
+        median_x0 = statistics.median([line.rect.x0 for line in good_lines])
 
         # check that no lines that have excluded words are contained in the rect
         cluster_rect = pymupdf.Rect(best_x0, best_y0, best_x1, best_y1)
@@ -154,7 +158,7 @@ class MaterialDescriptionExtractor:
 
         # expand to include entire last block
         def can_extend_below(
-            best_x0: float, best_y1: float, line: TextLine, x_tolerance: float = 5, line_gap: float = 10
+            best_x0: float, best_y1: float, line: TextLine, x_tolerance: float = 10, line_gap: float = 10
         ):
             if self.sidebar and self.sidebar.rect.contains(line.rect):
                 # Don't extend using lines that entirely fall within the sidebar rect. Avoids false positives e.g. for
@@ -170,7 +174,7 @@ class MaterialDescriptionExtractor:
                 max_x0 = (best_x0 + best_x1) / 2
             else:
                 # else only consider text that is nicely left-aligned with the current box
-                max_x0 = best_x0 + 2 * x_tolerance
+                max_x0 = median_x0 + x_tolerance
 
             return (
                 (best_x0 - x_tolerance < line.rect.x0 < max_x0)
@@ -180,7 +184,7 @@ class MaterialDescriptionExtractor:
             )
 
         def can_extend_above(
-            best_x0: float, best_y0: float, line: TextLine, x_tolerance: float = 5, line_gap: float = 10
+            best_x0: float, best_y0: float, line: TextLine, x_tolerance: float = 10, line_gap: float = 10
         ):
             not_far_above_current_rect = line.rect.y1 > best_y0 - line_gap
             within_sidebar = (
@@ -188,7 +192,7 @@ class MaterialDescriptionExtractor:
             )
 
             return (
-                (best_x0 - x_tolerance < line.rect.x0 < best_x0 + 2 * x_tolerance)
+                (best_x0 - x_tolerance < line.rect.x0 < median_x0 + x_tolerance)
                 and (not_far_above_current_rect or within_sidebar)
                 and (line.rect.y0 < best_y0)
                 and len(line.text) > 4  # avoid OCR artefacts
