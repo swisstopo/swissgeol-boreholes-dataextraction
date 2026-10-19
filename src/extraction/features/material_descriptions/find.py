@@ -103,14 +103,15 @@ class MaterialDescriptionExtractor:
         sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
 
         for cluster in description_clusters:
-            bounding_box = self._expand_lines_to_bounding_box(
-                cluster=cluster,
-                candidate_description=candidate_description,
-                is_not_description=is_not_description,
-                sorted_above=sorted_above,
-            )
-            if bounding_box is not None:
-                candidate_rects.append(bounding_box)
+            if len(cluster) > 1:
+                bounding_box = self._expand_lines_to_bounding_box(
+                    cluster=cluster,
+                    candidate_description=candidate_description,
+                    is_not_description=is_not_description,
+                    sorted_above=sorted_above,
+                )
+                if bounding_box is not None:
+                    candidate_rects.append(bounding_box)
         return candidate_rects
 
     def _expand_lines_to_bounding_box(
