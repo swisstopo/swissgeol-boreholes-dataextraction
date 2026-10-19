@@ -127,7 +127,6 @@ material_description:
       - moräne
       - aufschüttung
     excluding_expressions:
-      - herr
       - ende
       - profil
       - beschreibung
@@ -135,16 +134,14 @@ material_description:
       - kiesprospektion
       - signaturen
       - mischprobe # Should be reviewed, currently not used
-      - projekt
-      - ort
-      - adresse
       - wetter
       - pumpversuch
       - kernbohrung
       - bohrradius # Should be reviewed, currently not used
       - wasserzutritt
-      - Vollrohr
-      - Filterrohr
+      - vollrohr
+      - filterkies
+      - filterrohr
 
   fr:
     including_expressions:

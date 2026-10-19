@@ -51,34 +51,34 @@ class MaterialDescriptionExtractor:
     def find_candidates(self) -> list[pymupdf.Rect]:
         """Find all material description candidates on the page.
 
-        Args:
-            sidebar (Sidebar | None): The sidebar for which we want to find the material descriptions.
-
         Returns:
             list[pymupdf.Rect]: A list of candidate rectangles for material descriptions.
         """
 
         def check_y_condition(rect: pymupdf.Rect) -> bool:
             if self.sidebar and self.sidebar_zero_y is not None:
-                return self.sidebar_zero_y < (rect.y0 + rect.y1) / 2 and rect.y0 < self.sidebar.rect.y1
+                return self.sidebar_zero_y < (rect.y0 + rect.y1) / 2
             else:
                 return True
 
-        candidate_description = [line for line in self.horizontal_text_lines if check_y_condition(line.rect)]
+        is_not_description = []
+        candidate_description = []
+        for line in self.horizontal_text_lines:
+            if check_y_condition(line.rect):
+                if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=True):
+                    is_not_description.append(line)
+                else:
+                    candidate_description.append(line)
 
-        is_not_description = [
-            line
-            for line in candidate_description
-            if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=True)
-        ]
         is_description = [
             line
             for line in candidate_description
             if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=False)
             and line not in is_not_description
+            and (not self.sidebar or line.rect.y0 < self.sidebar.rect.y1)
         ]
 
-        if len(candidate_description) == 0:
+        if len(is_description) == 0:
             return []
 
         description_clusters: list[list[TextLine]] = []
@@ -104,26 +104,18 @@ class MaterialDescriptionExtractor:
             is_description = [line for line in is_description if line not in max_coverage]
 
         candidate_rects = []
-        sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
 
         for cluster in description_clusters:
             if len(cluster) > 1:
                 bounding_box = self._expand_lines_to_bounding_box(
-                    cluster=cluster,
-                    candidate_description=candidate_description,
-                    is_not_description=is_not_description,
-                    sorted_above=sorted_above,
+                    cluster=cluster, candidate_description=candidate_description, is_not_description=is_not_description
                 )
                 if bounding_box is not None:
                     candidate_rects.append(bounding_box)
         return candidate_rects
 
     def _expand_lines_to_bounding_box(
-        self,
-        cluster: list[TextLine],
-        candidate_description: list[TextLine],
-        is_not_description: list[TextLine],
-        sorted_above: list[TextLine],
+        self, cluster: list[TextLine], candidate_description: list[TextLine], is_not_description: list[TextLine]
     ) -> pymupdf.Rect | None:
         best_y0 = min([line.rect.y0 for line in cluster])
         best_y1 = max([line.rect.y1 for line in cluster])
@@ -180,7 +172,7 @@ class MaterialDescriptionExtractor:
                 (best_x0 - x_tolerance < line.rect.x0 < max_x0)
                 and (not_far_below_current_rect or within_sidebar)
                 and (line.rect.y1 > best_y1)
-                and len(line.text) > 4  # avoid OCR artefacts
+                and len(line.text) > 2  # avoid OCR artefacts
             )
 
         def can_extend_above(
@@ -195,16 +187,15 @@ class MaterialDescriptionExtractor:
                 (best_x0 - x_tolerance < line.rect.x0 < median_x0 + x_tolerance)
                 and (not_far_above_current_rect or within_sidebar)
                 and (line.rect.y0 < best_y0)
-                and len(line.text) > 4  # avoid OCR artefacts
+                and len(line.text) > 2  # avoid OCR artefacts
             )
 
-        while line := next(
-            (line for line in self.horizontal_text_lines if can_extend_below(best_x0, best_y1, line)), None
-        ):
+        while line := next((line for line in candidate_description if can_extend_below(best_x0, best_y1, line)), None):
             best_x0 = min(best_x0, line.rect.x0)
             best_x1 = max(best_x1, line.rect.x1)
             best_y1 = line.rect.y1
 
+        sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
         while next_line := next(
             (
                 desc_line
