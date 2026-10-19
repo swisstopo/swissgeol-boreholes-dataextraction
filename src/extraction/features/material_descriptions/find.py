@@ -23,26 +23,29 @@ class MaterialDescriptionExtractor:
     analytics: MatchingParamsAnalytics | None = None
 
     def __post_init__(self):
-        sidebar_zero_y0 = None
+        sidebar_zero_y = None
         if self.sidebar:
             if isinstance(self.sidebar, AAboveBSidebar) and len(self.sidebar.entries) > 1:
                 first_entry = self.sidebar.entries[0]
                 if first_entry.value <= 0.0:
-                    sidebar_zero_y0 = first_entry.rect.y0
+                    sidebar_zero_y = first_entry.rect.y0
                 else:
                     # extrapolate for AAboveBSidebars that don't have an explicit 0 depth
                     last_entry = self.sidebar.entries[-1]
                     if last_entry.value != first_entry.value:
-                        slope = (last_entry.rect.y0 - first_entry.rect.y0) / float(
+                        slope = (last_entry.rect.y1 - first_entry.rect.y1) / float(
                             last_entry.value - first_entry.value
                         )
-                        sidebar_zero_y0 = first_entry.rect.y0 - slope * float(first_entry.value)
+                        sidebar_zero_y = min(
+                            first_entry.rect.y0,
+                            (first_entry.rect.y0 + first_entry.rect.y1) / 2 - slope * float(first_entry.value),
+                        )
                     else:
-                        sidebar_zero_y0 = first_entry.rect.y0
+                        sidebar_zero_y = first_entry.rect.y0
             else:
-                sidebar_zero_y0 = self.sidebar.rect.y0
+                sidebar_zero_y = self.sidebar.rect.y0
 
-        self.sidebar_zero_y0 = sidebar_zero_y0
+        self.sidebar_zero_y = sidebar_zero_y
 
     def find_candidates(self) -> list[pymupdf.Rect]:
         """Find all material description candidates on the page.
@@ -55,8 +58,8 @@ class MaterialDescriptionExtractor:
         """
 
         def check_y_condition(rect: pymupdf.Rect) -> bool:
-            if self.sidebar and self.sidebar_zero_y0 is not None:
-                return self.sidebar_zero_y0 < (rect.y0 + rect.y1) / 2 and rect.y0 < self.sidebar.rect.y1
+            if self.sidebar and self.sidebar_zero_y is not None:
+                return self.sidebar_zero_y < (rect.y0 + rect.y1) / 2 and rect.y0 < self.sidebar.rect.y1
             else:
                 return True
 
@@ -181,7 +184,7 @@ class MaterialDescriptionExtractor:
         ):
             not_far_above_current_rect = line.rect.y1 > best_y0 - line_gap
             within_sidebar = (
-                self.sidebar_zero_y0 is not None and (line.rect.y0 + line.rect.y1) / 2 > self.sidebar_zero_y0
+                self.sidebar_zero_y is not None and (line.rect.y0 + line.rect.y1) / 2 > self.sidebar_zero_y
             )
 
             return (
