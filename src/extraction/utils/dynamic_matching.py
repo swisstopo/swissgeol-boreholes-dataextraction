@@ -170,8 +170,8 @@ class IntervalToLinesDP(DP):
                 break
 
         return [
-            (self.left[left_idx], [self.right[right_idx] for right_idx in reversed(right_idxes)])
-            for left_idx, right_idxes in reversed(mapping.items())
+            (self.left[left_idx], [self.right[right_idx] for right_idx in reversed(mapping[left_idx])])
+            for left_idx in range(self.nL)
         ]
 
 
