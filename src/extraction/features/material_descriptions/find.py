@@ -8,6 +8,7 @@ import pymupdf
 
 from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
+from extraction.features.stratigraphy.sidebar.classes.spulprobe_sidebar import SpulprobeSidebar
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
 from swissgeol_doc_processing.text.textline import TextLine
@@ -47,6 +48,11 @@ class MaterialDescriptionExtractor:
                         sidebar_zero_y = max(0, sidebar_zero_y)
                     else:
                         sidebar_zero_y = first_entry.rect.y0
+            elif isinstance(self.sidebar, SpulprobeSidebar):
+                # With a Spülprobe sidebar, we often have borehole profiles that continue across several pages, with
+                # the top of the page often containing a description that is continued from the previous page, before
+                # the first sidebar entry appears on the current page.
+                sidebar_zero_y = 0
             else:
                 sidebar_zero_y = self.sidebar.rect.y0
 
