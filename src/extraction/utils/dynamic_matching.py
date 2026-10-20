@@ -98,10 +98,9 @@ class IntervalToLinesDP(DP):
         - Each cell dp[i][j] represents the best cumulative score for matching the first i
           intervals with the first j lines.
         - Moves can be:
-          * Diagonal: Match current interval with current line, with previous lines belonging to previous intervals.
-          * Up: Keep previous interval assignments for current line.
-          * Left: Assign current line to the same interval as the previous line. As the lines in the same interval,
-            we add the affinity bonus for the line to encourage grouping compatible lines together.
+          * Diagonal: assign the j'th line to the i'th interval, and move to the previous interval
+          * Up: move to the previous interval without assigning the j'th line yet
+          * Left: assign the j'th line to the i'th interval, and stay with the same interval
         - In case of equal scores, diagonal moves are preferred to preserve matching,
           followed by up moves, then left moves.
 
@@ -123,16 +122,17 @@ class IntervalToLinesDP(DP):
 
         for i in range(1, self.nL + 1):
             for j in range(1, self.nR + 1):
-                # up: trust what was already matched, let current line j with previous intervals
-                # as this leaves interval i empty, we penalize this move
+                # up: move to the previous interval without assigning the j'th line yet (in other words: the i'th
+                # interval will remain empty, as long as there is no "left" move immediately before)
                 up = dp[i - 1][j] - EMPTY_INTERVAL_PENALTY
 
-                # left : steal the line to belong to current interval, consider the line affinity bonus (which can
-                # be negative) to take into account that lines in the same interval are compatible.
+                # left : assign the j'th line to the i'th interval, and stay with the same interval (in other words:
+                # this line does not start a new interval)
                 bonus = self.right_affinity[j - 1]
                 left = dp[i][j - 1] + pair_score[i - 1][j - 1] + bonus  # steal: new pairing is better
 
-                # diag : begin a new interval with the current line, thus not considering affinity bonus
+                # diag : assign the j'th line to the i'th interval, and move to the previous interval (in other words:
+                # this line starts a new interval)
                 diag = dp[i - 1][j - 1] + pair_score[i - 1][j - 1]
 
                 # tie-break: diag > up > left
@@ -159,11 +159,9 @@ class IntervalToLinesDP(DP):
             right_idx = j - 1
             if move == "diag":
                 mapping[left_idx].append(right_idx)
-                mapping[left_idx].reverse()
                 i -= 1
                 j -= 1
             elif move == "up":
-                mapping[left_idx].reverse()
                 i -= 1
             elif move == "left":
                 mapping[left_idx].append(right_idx)
@@ -171,14 +169,9 @@ class IntervalToLinesDP(DP):
             else:
                 break
 
-        if move == "left":
-            mapping[i - 1].reverse()
-
-        mapping = OrderedDict(reversed(list(mapping.items())))
-
         return [
-            (self.left[left_idx], [self.right[right_idx] for right_idx in right_idxes])
-            for left_idx, right_idxes in mapping.items()
+            (self.left[left_idx], [self.right[right_idx] for right_idx in reversed(mapping[left_idx])])
+            for left_idx in range(self.nL)
         ]
 
 

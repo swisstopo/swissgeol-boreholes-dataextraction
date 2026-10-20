@@ -72,7 +72,7 @@ affinity_params:
       right_end_weight: 1.0
       diagonal_weight: 1.0
       indentation_weight: 0.0
-empty_interval_penalty: 0.2
+empty_interval_penalty: 0.5
 
 material_description_column_width: 0.08
 
@@ -127,7 +127,6 @@ material_description:
       - moräne
       - aufschüttung
     excluding_expressions:
-      - herr
       - ende
       - profil
       - beschreibung
@@ -135,16 +134,14 @@ material_description:
       - kiesprospektion
       - signaturen
       - mischprobe # Should be reviewed, currently not used
-      - projekt
-      - ort
-      - adresse
       - wetter
       - pumpversuch
       - kernbohrung
       - bohrradius # Should be reviewed, currently not used
       - wasserzutritt
-      - Vollrohr
-      - Filterrohr
+      - vollrohr
+      - filterkies
+      - filterrohr
 
   fr:
     including_expressions:

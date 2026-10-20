@@ -1,0 +1,1 @@
+"""Material description extraction submodule."""

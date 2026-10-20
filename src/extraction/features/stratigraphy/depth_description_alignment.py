@@ -30,6 +30,14 @@ def match_with_dynamic_programming(
     dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
 
     _, mapping = dp.solve(sidebar.dp_scoring_fn)
+
+    # Did we add an implicit depth interval at the start (interval.start = None) and this was not assigned to any
+    # material description? In this case, we remove it again.
+    if len(mapping):
+        interval, text_lines = mapping[0]
+        if interval.start is None and not text_lines:
+            mapping.pop(0)
+
     return mapping
 
 
@@ -84,4 +92,11 @@ def match_lines_to_interval(
         sidebar.prevent_shifts_crossing()
 
     mapping = match_with_dynamic_programming(sidebar, description_lines, affinities)
+
+    for entry in sidebar.entries:
+        # Reset for when the same entries are re-used again in the context of a different sidebar / material
+        # description rect.
+        # TODO: properly decouple the relative shift from the actual (ideally immutable) depth column entry.
+        entry.relative_shift = 0.0
+
     return sidebar.post_processing(mapping)
