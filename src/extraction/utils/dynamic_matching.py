@@ -169,11 +169,9 @@ class IntervalToLinesDP(DP):
             else:
                 break
 
-        mapping_lists = reversed([reversed(targets) for targets in mapping.values()])
-
         return [
-            (self.left[left_idx], [self.right[right_idx] for right_idx in right_idxes])
-            for left_idx, right_idxes in enumerate(mapping_lists)
+            (self.left[left_idx], [self.right[right_idx] for right_idx in reversed(right_idxes)])
+            for left_idx, right_idxes in reversed(mapping.items())
         ]
 
 
