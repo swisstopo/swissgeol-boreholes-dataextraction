@@ -41,6 +41,10 @@ class MaterialDescriptionExtractor:
                             first_entry.rect.y0,
                             (first_entry.rect.y0 + first_entry.rect.y1) / 2 - slope * float(first_entry.value),
                         )
+                        # On continuation pages, the inferred zero point might be above the top edge of the page.
+                        # Until we have a more accurate estimate of the top of the first continuation layer, we just
+                        # use 0 (top of the page) in this case.
+                        sidebar_zero_y = max(0, sidebar_zero_y)
                     else:
                         sidebar_zero_y = first_entry.rect.y0
             else:
@@ -190,7 +194,8 @@ class MaterialDescriptionExtractor:
                 and len(line.text) > 2  # avoid OCR artefacts
             )
 
-        while line := next((line for line in candidate_description if can_extend_below(best_x0, best_y1, line)), None):
+        sorted_below = sorted(candidate_description, key=lambda c: c.rect.y0)
+        while line := next((line for line in sorted_below if can_extend_below(best_x0, best_y1, line)), None):
             best_x0 = min(best_x0, line.rect.x0)
             best_x1 = max(best_x1, line.rect.x1)
             best_y1 = line.rect.y1

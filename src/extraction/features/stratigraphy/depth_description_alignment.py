@@ -84,4 +84,11 @@ def match_lines_to_interval(
         sidebar.prevent_shifts_crossing()
 
     mapping = match_with_dynamic_programming(sidebar, description_lines, affinities)
+
+    for entry in sidebar.entries:
+        # Reset for when the same entries are re-used again in the context of a different sidebar / material
+        # description rect.
+        # TODO: properly decouple the relative shift from the actual (ideally immutable) depth column entry.
+        entry.relative_shift = 0.0
+
     return sidebar.post_processing(mapping)
