@@ -395,7 +395,7 @@ def _detect_line(im_gray: np.ndarray, lsd_params: dict) -> list[pymupdf.Rect]:
     # Return lines that are in rang width * [min_line_length, max_line_ratio].
     return [
         pymupdf.Rect(x0, y0, x1, y1)
-        for x0, y0, x1, y1 in lines[:, 0, :]
+        for x0, y0, x1, y1 in lines
         if max_line_ratio * width > np.hypot(x1 - x0, y1 - y0) > min_line_ratio * width
     ]
 
