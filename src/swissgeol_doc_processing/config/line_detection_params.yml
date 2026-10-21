@@ -4,7 +4,7 @@
 # Fast Line Detector parameters
 fld:
   length_threshold: 10
-  distance_threshold: 1.414
+  distance_threshold: 0.8
   canny_th1: 100
   canny_th2: 150
 

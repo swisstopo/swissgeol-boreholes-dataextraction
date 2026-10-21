@@ -73,19 +73,20 @@ def get_groundwater_symbol_upper_lines(
             if extracted_date is None:
                 continue
 
-        def is_near_entry(line: Line, x0: float, y0: float, x1: float, y1: float):
-            dx, dy = x1 - x0, y1 - y0
-            return any(
-                x0 - dx <= line_x <= x1 + dx and y0 - dy <= line_y <= y1 + dy
-                for line_x, line_y in (line.start.as_numpy, line.end.as_numpy)
-            )
+        def is_near_entry(line: Line, text_line: TextLine) -> bool:
+            text_rect = text_line.rect
+            start_x_ok = text_rect.x0 - text_rect.width < line.start.x
+            end_x_ok = line.end.x < text_rect.x1 + text_rect.width
+            start_y_ok = text_rect.y0 - 2 * text_rect.height < line.start.y
+            end_y_ok = line.end.y < text_rect.y1 + 2 * text_rect.height
+            return start_x_ok and start_y_ok and end_x_ok and end_y_ok
 
         text_width = text_line.rect.x1 - text_line.rect.x0
         horizontals_near_entry = [
             g_line
             for g_line in geometric_lines
             if g_line.is_horizontal(merging_params["angle_threshold"])
-            and is_near_entry(g_line, *text_line.rect)
+            and is_near_entry(g_line, text_line)
             and g_line.length < 3 * text_width
         ]
         pairs = get_valid_pairs(horizontals_near_entry, text_line, lines)
@@ -111,16 +112,17 @@ def is_valid_pair(l_top: Line, l_bot: Line, hit_line: TextLine, text_lines: list
     """
     avg_text_size = sum(line.rect.height for line in text_lines) / len(text_lines)
     rel_size_ok = l_top.length * 0.8 > l_bot.length > l_top.length / 4  # bottom one is smaller, but not too small
-    global_size_ok = avg_text_size < l_top.length < 3 * avg_text_size  # size comparable to avg text height
-    pos_ok = l_top.start.x < l_bot.start.x and l_bot.end.x < l_top.end.x  # the top one fully "spans" the bottom one
+    global_size_ok = avg_text_size / 2 < l_top.length < 4 * avg_text_size  # size comparable to avg text height
+    pos_left_ok = l_top.start.x + 0.1 * l_top.length < l_bot.start.x
+    pos_right_ok = l_bot.end.x < l_top.end.x - 0.1 * l_top.length  # the top one fully "spans" the bottom one
     pos_to_bb_ok = hit_line.rect.x0 < l_top.end.x and l_top.start.x < hit_line.rect.x1  # longest line overlaps the bb
-    gap_ok = l_bot.start.y - l_top.start.y < l_bot.length / 3  # gap is small, relative to the bottom line
+    gap_ok = l_bot.start.y - l_top.start.y < l_bot.length / 2  # gap is small, relative to the bottom line
     no_bb_in_gap = not any(
         line.rect.intersects(pymupdf.Rect(l_top.start.x, l_top.start.y, l_top.end.x, l_bot.start.y))
         for line in text_lines
     )  # no text line sits in between the two lines
 
-    return rel_size_ok and global_size_ok and pos_ok and pos_to_bb_ok and gap_ok and no_bb_in_gap
+    return rel_size_ok and global_size_ok and pos_left_ok and pos_right_ok and pos_to_bb_ok and gap_ok and no_bb_in_gap
 
 
 def get_valid_pairs(lines: list[Line], line: TextLine, text_lines: list[TextLine]) -> list[tuple[Line, Line]]:
