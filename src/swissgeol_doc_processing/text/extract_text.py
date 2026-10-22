@@ -60,7 +60,8 @@ def extract_text_lines_from_bbox(page: pymupdf.Page, bbox: pymupdf.Rect | None) 
                     if len(word_text) > 0:
                         words.append(TextWord(rect_union(char_rects), word_text, page.number + 1, color))
 
-                lines.append(TextLine(words, text_angle))
+                if len(words):
+                    lines.append(TextLine(words, text_angle))
 
     return lines
 
