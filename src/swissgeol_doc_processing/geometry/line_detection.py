@@ -78,6 +78,10 @@ def extract_lines(page: pymupdf.Page, text_lines: list[TextLine], line_detection
     else:
         cv_scale_factor = line_detection_params["default_pdf_scale_factor"]
 
+    max_image_dimension = line_detection_params["max_image_dimension"]
+    max_scale_factor = max_image_dimension / max(page.rect.height, page.rect.width)
+    cv_scale_factor = min(cv_scale_factor, max_scale_factor)
+
     lines = detect_lines_fld(
         page,
         fld_params=line_detection_params["fld"],

@@ -10,6 +10,7 @@ fld:
 
 default_pdf_scale_factor: 2
 expected_text_height: 20
+max_image_dimension: 10000
 
 line_merging_params:
   # maximum distance between two lines that are merged
