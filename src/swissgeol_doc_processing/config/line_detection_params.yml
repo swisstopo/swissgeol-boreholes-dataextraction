@@ -12,7 +12,7 @@ default_pdf_scale_factor: 2
 expected_text_height: 20
 
 line_merging_params:
-  # maximum distance between two lines that are merged for a reference image of width=1000
+  # maximum distance between two lines that are merged
   merging_tolerance: 8
   angle_threshold: 5
   min_line_length: 100
