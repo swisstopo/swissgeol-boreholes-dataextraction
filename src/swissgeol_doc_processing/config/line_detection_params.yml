@@ -13,7 +13,7 @@ expected_text_height: 20
 
 line_merging_params:
   # maximum distance between two lines that are merged
-  merging_tolerance: 8
+  merging_tolerance: 12
   angle_threshold: 5
   min_line_length: 100
 

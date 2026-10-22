@@ -110,7 +110,7 @@ def extract_lines(page: pymupdf.Page, text_lines: list[TextLine], line_detection
 
     lines = [line for line in lines if line_is_valid(line)]
     if not lines:
-        return [], []
+        return LineDetectionResult([], [], cv_scale_factor)
 
     merging_params = line_detection_params["line_merging_params"]
 
