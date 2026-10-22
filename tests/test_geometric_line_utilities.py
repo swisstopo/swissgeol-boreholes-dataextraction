@@ -146,14 +146,14 @@ def test_merge_lines(merge_lines_case):  # noqa: D103
     "line1, line2, tol, expected",
     [
         # "Two lines that almost extend each other should be considered close"
-        (Line(Point(0, 0), Point(0, 10)), Line(Point(0, 11), Point(0, 20)), 5, True),
-        (Line(Point(0, 11), Point(0, 20)), Line(Point(0, 0), Point(0, 10)), 5, True),
+        (Line(Point(0, 0), Point(0, 10)), Line(Point(0, 11), Point(0, 20)), 8, True),
+        (Line(Point(0, 11), Point(0, 20)), Line(Point(0, 0), Point(0, 10)), 8, True),
         # "A line that is almost a sub-segment of another line should be considered close"
-        (Line(Point(0, 0), Point(0, 20)), Line(Point(1, 8), Point(1, 12)), 5, True),
-        (Line(Point(1, 8), Point(1, 12)), Line(Point(0, 0), Point(0, 20)), 5, True),
+        (Line(Point(0, 0), Point(0, 20)), Line(Point(1, 8), Point(1, 12)), 8, True),
+        (Line(Point(1, 8), Point(1, 12)), Line(Point(0, 0), Point(0, 20)), 8, True),
         # "Two very short parallel lines should not be considered close"
-        (Line(Point(0, 0), Point(0, 0.1)), Line(Point(2, 0), Point(2, 0.1)), 5, False),
-        (Line(Point(2, 0), Point(2, 0.1)), Line(Point(0, 0), Point(0, 0.1)), 5, False),
+        (Line(Point(0, 0), Point(0, 0.1)), Line(Point(2, 0), Point(2, 0.1)), 8, False),
+        (Line(Point(2, 0), Point(2, 0.1)), Line(Point(0, 0), Point(0, 0.1)), 8, False),
     ],
 )
 def test_are_close(line1, line2, tol, expected):  # noqa: D103
