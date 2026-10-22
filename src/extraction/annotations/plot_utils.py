@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 from core.mlflow_tracking import mlflow
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.geometry.line_detection import LineDetectionResult
 from swissgeol_doc_processing.text.textblock import TextBlock
 
 load_dotenv()
@@ -53,13 +54,13 @@ def _get_polyline_triangle(
     return [point1, point2, point3, point1]
 
 
-def _draw_lines(img: np.ndarray, lines: list[Line], scale_factor: int = 1) -> np.ndarray:
+def _draw_lines(img: np.ndarray, lines: list[Line], scale_factor: float) -> np.ndarray:
     """Draw lines on image.
 
     Args:
         img (np.ndarray): Input image to draw on.
         lines (list[Line]): Lines to draw
-        scale_factor (int, optional): Scaling factor. Defaults to 1.
+        scale_factor (float, optional): Scaling factor.
 
     Returns:
         np.ndarray: Lines plotted on image.
@@ -121,19 +122,19 @@ def _convert_line_to_grid(line: Line, scale_factor: float) -> Line:
     return Line(start, end)
 
 
-def plot_lines(page: pymupdf.Page, geometric_lines: list[Line], scale_factor: float = 2) -> np.ndarray:
+def plot_lines(page: pymupdf.Page, line_detection_result: LineDetectionResult) -> np.ndarray:
     """Given a page object and the lines detected in the page, plot the page with the detected lines.
 
     Args:
         page (pymupdf.Page): The page to draw the lines in.
-        geometric_lines (list[Line]): The geometric_lines lines to plot.
-        scale_factor (float, optional): The scale factor to apply to the pdf. Defaults to 2.
+        line_detection_result (LineDetectionResult): The results of the line detection algorithm
 
     Returns:
         img (np.ndarray): The page image with the lines drawn on it.
     """
+    scale_factor = line_detection_result.cv_scale_factor
     img = convert_page_to_img(page, scale_factor=scale_factor)
-    img = _draw_lines(img, geometric_lines, scale_factor=scale_factor)
+    img = _draw_lines(img, line_detection_result.all_geometric_lines, scale_factor=scale_factor)
     return img
 
 

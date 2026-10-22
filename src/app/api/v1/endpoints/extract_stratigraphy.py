@@ -77,11 +77,15 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
 
         # 3. extract layers
         text_lines = extract_text_lines(page)
-        long_or_horizontal_lines, all_geometric_lines = extract_lines(page, text_lines, line_detection_params)
+        line_detection_result = extract_lines(page, text_lines, line_detection_params)
 
         # Detect table structures on the page
         table_structures = detect_table_structures(
-            page.rect.width, page.rect.height, long_or_horizontal_lines, text_lines, table_detection_params
+            page.rect.width,
+            page.rect.height,
+            line_detection_result.long_or_horizontal_lines,
+            text_lines,
+            table_detection_params,
         )
 
         # Detect strip logs on the page
@@ -89,8 +93,7 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
 
         extracted_boreholes = BoreholeExtractor(
             text_lines,
-            long_or_horizontal_lines,
-            all_geometric_lines,
+            line_detection_result,
             table_structures,
             strip_logs,
             language,
@@ -109,7 +112,7 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
             groundwater_entries = groundwater_extractor.extract_groundwater(
                 page_number=page_number,
                 text_lines=text_lines,
-                geometric_lines=long_or_horizontal_lines,
+                geometric_lines=line_detection_result.long_or_horizontal_lines,
                 extracted_boreholes=extracted_boreholes,
             )
 

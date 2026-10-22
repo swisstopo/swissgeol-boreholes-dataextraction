@@ -8,12 +8,12 @@ fld:
   canny_th1: 100
   canny_th2: 150
 
-pdf_scale_factor: 2
+default_pdf_scale_factor: 2
+expected_text_height: 20
 
 line_merging_params:
-  reference_size: 1000
   # maximum distance between two lines that are merged for a reference image of width=1000
-  merging_tolerance: 8.
+  merging_tolerance: 8
   angle_threshold: 5
   min_line_length: 100
 

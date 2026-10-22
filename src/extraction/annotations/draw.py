@@ -26,11 +26,7 @@ colors = ["purple", "blue"]
 logger = logging.getLogger(__name__)
 
 
-def plot_prediction(
-    prediction: FilePredictions,
-    doc: pymupdf.Document,
-    out_directory: Path,
-) -> None:
+def plot_prediction(prediction: FilePredictions, page: pymupdf.Page, out_directory: Path, scale_factor: float) -> None:
     """Draw predictions on pdf pages.
 
     Draws various recognized information on the pdf pages present at directory and saves
@@ -46,18 +42,14 @@ def plot_prediction(
 
     Args:
         prediction (FilePredictions): Prediction for file.
-        doc (pymupdf.Document): Path to the processed PDF file.
+        page (pymupdf.Page): PDF page to plot the predictions for.
         out_directory (Path): Path to the output directory where the images are saved.
+        scale_factor (float): The zoom to use for generating the image of the PDF page
     """
-    filename = prediction.file_name
-    logger.info("Drawing predictions for file %s", filename)
-    for _, page in enumerate(doc):
-        drawer = PageDrawer(page)
-        drawer.draw(prediction)
-        img = convert_page_to_img(page, scale_factor=2)
-        save_visualization(img, filename, page.number + 1, "outputs", out_directory)
-
-    logger.info("Finished drawing predictions for file %s", filename)
+    drawer = PageDrawer(page)
+    drawer.draw(prediction)
+    img = convert_page_to_img(page, scale_factor=scale_factor)
+    save_visualization(img, prediction.file_name, page.number + 1, "outputs", out_directory)
 
 
 class PageDrawer:
@@ -357,13 +349,16 @@ class PageDrawer:
             )
 
 
-def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page_index: int) -> np.ndarray:
+def plot_tables(
+    page: pymupdf.Page, table_structures: list[TableStructure], page_index: int, scale_factor: float
+) -> np.ndarray:
     """Draw table structures on a pdf page.
 
     Args:
         page:               The PDF page.
         table_structures:   The identified table structures on the page.
         page_index:         The index of the page in the document (0-based).
+        scale_factor:       The zoom to use for generating the image of the PDF page
 
     Returns:
         np.ndarray: The plotted table.
@@ -376,7 +371,7 @@ def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page
     draw_table_structures(shape, temp_page.derotation_matrix, table_structures)
     shape.commit()
 
-    result = convert_page_to_img(temp_page, scale_factor=2)
+    result = convert_page_to_img(temp_page, scale_factor=scale_factor)
 
     temp_doc.close()
 
@@ -471,13 +466,16 @@ def draw_strip_logs(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, str
             )
 
 
-def plot_strip_logs(page: pymupdf.Page, strip_logs: list[StripLog], page_index: int) -> np.ndarray:
+def plot_strip_logs(
+    page: pymupdf.Page, strip_logs: list[StripLog], page_index: int, scale_factor: float
+) -> np.ndarray:
     """Draw strip log structures on a pdf page.
 
     Args:
         page: The PDF page.
         strip_logs: The identified strip log structures on the page.
         page_index: The index of the page in the document (0-based).
+        scale_factor: The zoom to use for generating the image of the PDF page
 
     Returns:
         np.ndarray: The plotted striplog.
@@ -490,7 +488,7 @@ def plot_strip_logs(page: pymupdf.Page, strip_logs: list[StripLog], page_index: 
     draw_strip_logs(shape, temp_page.derotation_matrix, strip_logs)
     shape.commit()
 
-    result = convert_page_to_img(temp_page, scale_factor=2)
+    result = convert_page_to_img(temp_page, scale_factor=scale_factor)
 
     temp_doc.close()
 

@@ -35,6 +35,7 @@ from extraction.features.stratigraphy.sidebar.extractor.protocol_sidebar_extract
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.geometry.line_detection import LineDetectionResult
 from swissgeol_doc_processing.text.find_description import get_description_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
 from swissgeol_doc_processing.text.textblock import (
@@ -57,8 +58,7 @@ class BoreholeExtractor:
     def __init__(
         self,
         lines: list[TextLine],
-        long_or_horizontal_lines: list[Line],
-        all_geometric_lines: list[Line],
+        line_detection_result: LineDetectionResult,
         table_structures: list[TableStructure],
         strip_logs: list[StripLog],
         language: str,
@@ -73,8 +73,7 @@ class BoreholeExtractor:
 
         Args:
             lines (list[TextLine]): all the text lines on the page.
-            long_or_horizontal_lines (list[Line]): Geometric lines (only the significant ones and the horizontals).
-            all_geometric_lines (list[Line]): All the geometric lines of the page (small ones included).
+            line_detection_result (LineDetectionResult): Results of the line detection algorithm.
             table_structures (list[TableStructure]): The identified table structures of the page.
             strip_logs (list[StripLog]): The identified strip logs of the page.
             language (str): The language of the page.
@@ -86,8 +85,8 @@ class BoreholeExtractor:
             **matching_params (dict): Additional parameters for the matching pipeline.
         """
         self.lines = lines
-        self.long_or_horizontal_lines = long_or_horizontal_lines
-        self.all_geometric_lines = all_geometric_lines
+        self.long_or_horizontal_lines = line_detection_result.long_or_horizontal_lines
+        self.all_geometric_lines = line_detection_result.all_geometric_lines
         self.table_structures = table_structures
         self.strip_logs = strip_logs  # added for future usage
         self.language = language

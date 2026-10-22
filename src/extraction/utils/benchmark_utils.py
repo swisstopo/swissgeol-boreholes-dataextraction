@@ -101,22 +101,27 @@ class CallbackFactory:
             draw_directory = out_directory / "draw"
             draw_directory.mkdir(parents=True, exist_ok=True)
 
+            logger.info("Drawing predictions for file %s", file_name)
             with open_pdf(file=pdf_path, filename=file_name) as doc:
                 for page_data in result.pages_data:
                     page = doc[page_data.page_index]
                     page_number = page_data.page_index + 1
 
+                    scale_factor = page_data.line_detection_result.cv_scale_factor
+
                     if self.draw_tables:
-                        img = plot_tables(page, page_data.table_structures, page_data.page_index)
+                        img = plot_tables(page, page_data.table_structures, page_data.page_index, scale_factor)
                         save_visualization(img, file_name, page_number, "tables", draw_directory)
 
                     if self.draw_strip_logs:
-                        img = plot_strip_logs(page, page_data.strip_logs, page_data.page_index)
+                        img = plot_strip_logs(page, page_data.strip_logs, page_data.page_index, scale_factor)
                         save_visualization(img, file_name, page_number, "strip_logs", draw_directory)
 
                     if self.draw_lines:
-                        img = plot_lines(page, page_data.lines, scale_factor=line_detection_params["pdf_scale_factor"])
+                        img = plot_lines(page, page_data.line_detection_result)
                         save_visualization(img, file_name, page_number, "lines", draw_directory)
 
-                if not self.skip_draw_predictions:
-                    plot_prediction(result.predictions, doc, draw_directory)
+                    if not self.skip_draw_predictions:
+                        plot_prediction(result.predictions, page, draw_directory, scale_factor)
+
+            logger.info("Finished drawing predictions for file %s", file_name)

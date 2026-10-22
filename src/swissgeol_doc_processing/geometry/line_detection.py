@@ -1,6 +1,8 @@
 """Script for line detection in pdf pages."""
 
 import logging
+import statistics
+from dataclasses import dataclass
 
 import cv2
 import numpy as np
@@ -16,6 +18,15 @@ from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class LineDetectionResult:
+    """Class containing the results of the geometric line detection."""
+
+    long_or_horizontal_lines: list[Line]
+    all_geometric_lines: list[Line]
+    cv_scale_factor: float
 
 
 def detect_lines_fld(page: pymupdf.Page, scale_factor=2, fld_params=None) -> list[Line]:
@@ -46,9 +57,7 @@ def detect_lines_fld(page: pymupdf.Page, scale_factor=2, fld_params=None) -> lis
     return [line_from_array(line, scale_factor) for line in lines]
 
 
-def extract_lines(
-    page: pymupdf.Page, text_lines: list[TextLine], line_detection_params: dict
-) -> tuple[list[Line], list[Line]]:
+def extract_lines(page: pymupdf.Page, text_lines: list[TextLine], line_detection_params: dict) -> LineDetectionResult:
     """Extract lines from a pdf page.
 
     Geometric lines that fall entirely within a single word of some text line will be ignored.
@@ -59,13 +68,20 @@ def extract_lines(
         line_detection_params (dict): The parameters for line detection.
 
     Returns:
-        tuple[list[Line], list[Line]]: A tuple containing the filtered lines meeting length/horizontal criteria
-            and all merged lines.
+        LineDetectionResult
     """
+    horizontal_text_heights = [line.rect.height for line in text_lines if abs(line.text_angle) < 5]
+    if len(horizontal_text_heights) > 2:
+        median_text_height = statistics.median(horizontal_text_heights)
+        expected_text_height = line_detection_params["expected_text_height"]
+        cv_scale_factor = expected_text_height / median_text_height
+    else:
+        cv_scale_factor = line_detection_params["default_pdf_scale_factor"]
+
     lines = detect_lines_fld(
         page,
         fld_params=line_detection_params["fld"],
-        scale_factor=line_detection_params["pdf_scale_factor"],
+        scale_factor=cv_scale_factor,
     )
     # We currently use lsd as it is more precise detecting smalls lines. The following comments shows how the hough
     # transform line segment detector could be called, in case we need it later on.
@@ -98,13 +114,12 @@ def extract_lines(
 
     merging_params = line_detection_params["line_merging_params"]
 
-    width = page.rect[2]
-    scaling_factor = width / merging_params["reference_size"]
-
     # return lines
-    tol = merging_params["merging_tolerance"] * scaling_factor
+    tol = merging_params["merging_tolerance"]
     angle_threshold = merging_params["angle_threshold"]
-    min_line_length = merging_params["min_line_length"] * scaling_factor
+    min_line_length = merging_params["min_line_length"]
     merged = merge_parallel_lines_quadtree(lines, tol=tol, angle_threshold=angle_threshold)
     filtered = [line for line in merged if line.length >= min_line_length or line.is_horizontal(angle_threshold)]
-    return filtered, merged
+    return LineDetectionResult(
+        long_or_horizontal_lines=filtered, all_geometric_lines=merged, cv_scale_factor=cv_scale_factor
+    )
