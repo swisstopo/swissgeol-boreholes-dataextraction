@@ -83,15 +83,14 @@ def extract_lines(page: pymupdf.Page, text_lines: list[TextLine], line_detection
         fld_params=line_detection_params["fld"],
         scale_factor=cv_scale_factor,
     )
-    # We currently use lsd as it is more precise detecting smalls lines. The following comments shows how the hough
-    # transform line segment detector could be called, in case we need it later on.
-    #
-    # lines = detect_lines_hough(page, hough_params=line_detection_params["hough"])
 
-    def grow_rect(rect: pymupdf.Rect, delta: float) -> pymupdf.Rect:
-        return pymupdf.Rect(rect.x0 - delta, rect.y0 - delta, rect.x1 + delta, rect.y1 + delta)
+    def grow_rect(rect: pymupdf.Rect, x_delta: float, y_delta) -> pymupdf.Rect:
+        return pymupdf.Rect(rect.x0 - x_delta, rect.y0 - y_delta, rect.x1 + x_delta, rect.y1 + y_delta)
 
     line_rtree = TextLineRTree(text_lines)
+
+    x_delta = 2 / cv_scale_factor
+    y_delta = 1 / cv_scale_factor
 
     def line_is_valid(line: Line) -> bool:
         line_bbox = pymupdf.Rect(
@@ -100,10 +99,11 @@ def extract_lines(page: pymupdf.Page, text_lines: list[TextLine], line_detection
             x1=max(line.start.x, line.end.x),
             y1=max(line.start.y, line.end.y),
         )
-        matching_text_lines = line_rtree.query(line_bbox)
-        # grow each word's rect by 1 point because the line detection algorithm is only accurate to +/- 1 pixel
+        matching_text_lines = line_rtree.query(grow_rect(line_bbox, x_delta=x_delta, y_delta=y_delta))
+        # grow each word's rect to account for inaccuracies in the line detection and OCR positioning
         return all(
-            line.length > word.rect.height or not grow_rect(word.rect, 1).contains(line_bbox)
+            line.length > word.rect.height
+            or not grow_rect(word.rect, x_delta=x_delta, y_delta=y_delta).contains(line_bbox)
             for text_line in matching_text_lines
             for word in text_line.words
         )
