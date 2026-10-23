@@ -3,7 +3,6 @@
 from collections.abc import Callable
 
 import pymupdf
-from numpy.typing import ArrayLike
 
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 
@@ -130,19 +129,19 @@ def y_overlap_significant_largest(rect1: pymupdf.Rect, rect2: pymupdf.Rect, leve
     return axis_overlap_significant(rect1, rect2, axis="y", level=level, side_length_func=max)
 
 
-def line_from_array(line: ArrayLike, scale_factor: float) -> Line:
+def line_from_array(line: list[float], scale_factor: float) -> Line:
     """Convert a line in the format of [[x1, y1, x2, y2]] to a Line objects.
 
     Args:
-        line (ArrayLike): line as represented by an array of four numbers.
+        line (list[float]): line as represented by an array of four numbers.
         scale_factor (float): The scale factor to apply to the lines. Required when
                               the pdf page was scaled before detecting lines.
 
     Returns:
         Line: The converted line.
     """
-    start = Point(line[0][0] / scale_factor, line[0][1] / scale_factor)
-    end = Point(line[0][2] / scale_factor, line[0][3] / scale_factor)
+    start = Point(line[0] / scale_factor, line[1] / scale_factor)
+    end = Point(line[2] / scale_factor, line[3] / scale_factor)
 
     return Line(start, end)
 

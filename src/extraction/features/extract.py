@@ -35,6 +35,7 @@ from extraction.features.stratigraphy.sidebar.extractor.protocol_sidebar_extract
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.geometry.line_detection import LineDetectionResult
 from swissgeol_doc_processing.text.find_description import get_description_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
 from swissgeol_doc_processing.text.textblock import (
@@ -57,8 +58,7 @@ class BoreholeExtractor:
     def __init__(
         self,
         lines: list[TextLine],
-        long_or_horizontal_lines: list[Line],
-        all_geometric_lines: list[Line],
+        line_detection_result: LineDetectionResult,
         table_structures: list[TableStructure],
         strip_logs: list[StripLog],
         language: str,
@@ -73,8 +73,7 @@ class BoreholeExtractor:
 
         Args:
             lines (list[TextLine]): all the text lines on the page.
-            long_or_horizontal_lines (list[Line]): Geometric lines (only the significant ones and the horizontals).
-            all_geometric_lines (list[Line]): All the geometric lines of the page (small ones included).
+            line_detection_result (LineDetectionResult): Results of the line detection algorithm.
             table_structures (list[TableStructure]): The identified table structures of the page.
             strip_logs (list[StripLog]): The identified strip logs of the page.
             language (str): The language of the page.
@@ -86,8 +85,8 @@ class BoreholeExtractor:
             **matching_params (dict): Additional parameters for the matching pipeline.
         """
         self.lines = lines
-        self.long_or_horizontal_lines = long_or_horizontal_lines
-        self.all_geometric_lines = all_geometric_lines
+        self.long_or_horizontal_lines = line_detection_result.long_or_horizontal_lines
+        self.all_geometric_lines = line_detection_result.all_geometric_lines
         self.table_structures = table_structures
         self.strip_logs = strip_logs  # added for future usage
         self.language = language
@@ -483,13 +482,23 @@ class BoreholeExtractor:
             An optional BoreholeCandidate object, which will not have a sidebar.
         """
         # only allow sidebar=None fallback if strong evidence exists
-        if self._allow_description_only_fallback():
-            return self._find_borehole_candidate(sidebar=None)
-        else:
-            logger.debug(
-                "Page %s: skipping description-only fallback (insufficient evidence)",
-                self.page_number,
-            )
+        has_table = bool(self.table_structures)
+        has_striplog = bool(self.strip_logs)
+        if has_table or has_striplog:
+            borehole_candidate = self._find_borehole_candidate(sidebar=None)
+            if borehole_candidate and (
+                has_striplog
+                or any(
+                    table.bounding_rect.intersects(borehole_candidate.material_description_rect)
+                    for table in self.table_structures
+                )
+            ):
+                return borehole_candidate
+
+        logger.debug(
+            "Page %s: skipping description-only fallback (insufficient evidence)",
+            self.page_number,
+        )
         return None
 
     def _extract_filtered_borehole_candidates(self) -> list[BoreholeCandidate]:
@@ -529,31 +538,6 @@ class BoreholeExtractor:
             number_of_good_sidebars=len(good_borehole_candidates),
             best_sidebar_score=best_candidate_score,
         )
-
-    def _allow_description_only_fallback(self) -> bool:
-        """Return True if we have strong evidence that a description-only borehole is plausible.
-
-        This is meant to reduce false-positive boreholes created from random paragraphs.
-        """
-        # Table evidence thresholds
-        min_table_height_ratio = self.matching_params.get("fallback_min_table_height_ratio", 0.85)
-
-        has_table = bool(self.table_structures)
-        has_striplog = bool(self.strip_logs)
-
-        # If strip-log exists, that's a borehole
-        if has_striplog:
-            return True
-
-        if not has_table:
-            return False
-
-        # For now, we require the table height to exceed a specific threshold in order to reduce false positives from
-        # small tables which might include keywords in their description, misleadingly classifying them as boreholes.
-        # BUT: TODO keep in mind that this might exclude some boreholes (e.g scanned image has large margin above and
-        # below the actual scanned page) --> this mechanism could/should be optimized in the future!
-        largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
-        return (largest_table.bounding_rect.height / max(self.page_height, 1e-16)) >= min_table_height_ratio
 
 
 def _split_text_lines_by_table_structures(

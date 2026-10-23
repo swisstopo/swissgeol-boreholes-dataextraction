@@ -32,7 +32,7 @@ from swissgeol_doc_processing.text.textline import TextLine, TextWord
         (
             # Case 3: gap is too big
             Line(Point(100, 100), Point(120, 100)),
-            Line(Point(103, 106), Point(117, 106)),
+            Line(Point(103, 108), Point(117, 108)),
             TextLine([TextWord(pymupdf.Rect(110, 90, 130, 99), "12.5", 0)]),
             False,
             "invalid_gap_too_big",

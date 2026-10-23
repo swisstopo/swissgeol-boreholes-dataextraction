@@ -13,8 +13,7 @@ from dotenv import load_dotenv
 from extraction.features.extract import BoreholeExtractor
 from extraction.features.metadata.borehole_name_extraction import extract_borehole_names
 from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarQualityMetrics
-from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
-from swissgeol_doc_processing.geometry.line_detection import extract_lines
+from swissgeol_doc_processing.geometry.line_detection import LineDetectionResult, extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.stemmer import find_matching_expressions
 from swissgeol_doc_processing.text.textline import TextLine
@@ -66,8 +65,7 @@ class ExtractionContext:
     """
 
     text_lines: list[TextLine]
-    long_or_horizontal_lines: list[Line]
-    all_geometric_lines: list[Line]
+    line_detection_result: LineDetectionResult
     strip_logs: list[StripLog]
     table_structures: list[TableStructure]
     language: str | None = None
@@ -92,16 +90,19 @@ class ExtractionContext:
             ExtractionContext with all data extracted
         """
         text_lines = extract_text_lines(page)
-        long_or_horizontal_lines, all_geometric_lines = extract_lines(page, text_lines, line_detection_params)
+        line_detection_result = extract_lines(page, text_lines, line_detection_params)
         strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
         table_structures = detect_table_structures(
-            page.rect.width, page.rect.height, long_or_horizontal_lines, text_lines, table_detection_params
+            page.rect.width,
+            page.rect.height,
+            line_detection_result.long_or_horizontal_lines,
+            text_lines,
+            table_detection_params,
         )
 
         return cls(
             text_lines=text_lines,
-            long_or_horizontal_lines=long_or_horizontal_lines,
-            all_geometric_lines=all_geometric_lines,
+            line_detection_result=line_detection_result,
             strip_logs=strip_logs,
             table_structures=table_structures,
         )
@@ -184,8 +185,7 @@ def extract_page_features(
     # Extract sidebar information
     sidebar_information = BoreholeExtractor(
         extraction_context.text_lines,
-        extraction_context.long_or_horizontal_lines,
-        extraction_context.all_geometric_lines,
+        extraction_context.line_detection_result,
         extraction_context.table_structures,
         extraction_context.strip_logs,
         language,
@@ -200,8 +200,7 @@ def extract_page_features(
     if extract_boreholes:
         extracted_boreholes = BoreholeExtractor(
             extraction_context.text_lines,
-            extraction_context.long_or_horizontal_lines,
-            extraction_context.all_geometric_lines,
+            extraction_context.line_detection_result,
             extraction_context.table_structures,
             extraction_context.strip_logs,
             language,
@@ -234,8 +233,8 @@ def extract_page_features(
         number_of_tables=len(extraction_context.table_structures),
         number_of_boreholes=number_of_boreholes,
         sidebar_information=sidebar_information,
-        number_long_or_horizontal_lines=len(extraction_context.long_or_horizontal_lines),
-        number_all_geometric_lines=len(extraction_context.all_geometric_lines),
+        number_long_or_horizontal_lines=len(extraction_context.line_detection_result.long_or_horizontal_lines),
+        number_all_geometric_lines=len(extraction_context.line_detection_result.all_geometric_lines),
         text_line_count=len(extraction_context.text_lines),
         borehole_name_entries=borehole_name_entries,
     )

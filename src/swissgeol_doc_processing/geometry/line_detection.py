@@ -1,7 +1,8 @@
 """Script for line detection in pdf pages."""
 
 import logging
-import os
+import statistics
+from dataclasses import dataclass
 
 import cv2
 import numpy as np
@@ -19,33 +20,37 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-def detect_lines_lsd(page: pymupdf.Page, scale_factor=2, lsd_params=None) -> list[Line]:
-    """Given a file path, detect lines in the pdf using the Line Segment Detector (LSD) algorithm.
+@dataclass
+class LineDetectionResult:
+    """Class containing the results of the geometric line detection."""
 
-    Publication of the algorithm can be found here: http://www.ipol.im/pub/art/2012/gjmr-lsd/article.pdf
-    Note: As of now the function only works for pdfs with a single page.
-          For now the function displays each pdf with the lines detected using opencv.
-          This behavior will be changed in the future.
+    long_or_horizontal_lines: list[Line]
+    all_geometric_lines: list[Line]
+    cv_scale_factor: float
+
+
+def detect_lines_fld(page: pymupdf.Page, scale_factor=2, fld_params=None) -> list[Line]:
+    """Given a PDF page, detect lines using the Fast Line Detector (FLD) algorithm.
+
+    Publication of the algorithm can be found here: https://www.researchgate.net/publication/283992330
 
     Args:
         page (pymupdf.Page): The page to detect lines in.
-        scale_factor (float, optional): The scale factor to scale the pdf page. Defaults to 2.
-        lsd_params (dict, optional): The parameters for the Line Segment Detector. Defaults to None.
+        scale_factor (float, optional): The scale factor to scale the PDF page. Defaults to 2.
+        fld_params (dict, optional): The parameters for the Fast Line Detector. Defaults to None.
 
     Returns:
-        list[Line]: The lines detected in the pdf.
+        list[Line]: The lines detected on the PDF page.
     """
-    pix = page.get_pixmap(matrix=pymupdf.Matrix(scale_factor, scale_factor))
-    img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, 3)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(scale_factor, scale_factor), colorspace=pymupdf.csGRAY)
+    reshaped = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w)
 
-    # Create default line segment detector
-    lsd = cv2.createLineSegmentDetector(**lsd_params)
-    #  Documentation for the parameters can be found here:
-    #  https://docs.opencv.org/4.x/dd/d1a/group__imgproc__feature.html#gae0bba3b867a5f44d1b823aef4f57ee8d
+    # The Fast Line Detector also has an option do_merge for line merging, but this is significantly slower than
+    # our own approach, so we use our approach and do not use the do_merge option of FLD.
+    fld = cv2.ximgproc.createFastLineDetector(**fld_params)
 
     # Detect lines in the image
-    lines = lsd.detect(gray)[0]
+    lines = fld.detect(reshaped)
 
     if lines is None:
         return []
@@ -53,57 +58,7 @@ def detect_lines_lsd(page: pymupdf.Page, scale_factor=2, lsd_params=None) -> lis
     return [line_from_array(line, scale_factor) for line in lines]
 
 
-def detect_lines_hough(page: pymupdf.Page, hough_params: dict) -> list[Line]:
-    """Given document, detect lines in the pdf using the hough transform algorithm.
-
-    Args:
-        page (pymupdf.Page): The page to detect lines in.
-        hough_params (dict): The parameters for the bluring and hough transform.
-
-    Returns:
-        list[Line]: The lines detected in the pdf
-    """
-    pix = page.get_pixmap()
-    img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, 3)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    target_width = hough_params["target_width"]
-    h, w = gray.shape
-    scale_ratio = target_width / w  # resize to a fixed size, to work with the chosen parameters
-    new_size = (target_width, int(h * scale_ratio))  # carefull size is (w,h) for resizing
-    gray = cv2.resize(gray, new_size)
-    os.makedirs("data/debug_cv", exist_ok=True)
-    cv2.imwrite("data/debug_cv/debug_cv1_gray.png", gray)
-
-    blur_dist = hough_params["blur_dist"]
-    blurred = cv2.bilateralFilter(gray, blur_dist, 75, blur_dist * 5)  # dist, sigma_color, sigma space
-    cv2.imwrite("data/debug_cv/debug_cv2_blur2.png", blurred)
-
-    # Apply binary thresholding with otsu method, that minimizes the intra-class variance.
-    _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    cv2.imwrite("data/debug_cv/debug_cv3_otsu.png", thresh)
-
-    morph_kernel_size = hough_params["morph_kernel_size"]
-    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (morph_kernel_size, 3))
-    horizontal = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, horizontal_kernel, iterations=2)
-    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, morph_kernel_size))
-    vertical = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, vertical_kernel, iterations=2)
-    combined = cv2.bitwise_or(horizontal, vertical)
-    cv2.imwrite("data/debug_cv/debug_cv4_morph_VH.png", combined)
-
-    min_line_length = hough_params["min_line_length"]  # Minimum length of line (adjust based on your image)
-    max_line_gap = hough_params["max_line_gap"]  # Maximum allowed gap between line segments
-    rho = hough_params["rho"]  # Distance resolution in the accumulartor space in pixels
-    theta = np.pi / 180 * hough_params["theta_deg"]  # Angular resolution in the accumulator space in radian
-    threshold = hough_params["threshold"]  # Minimum number of votes to consider a line
-    lines = cv2.HoughLinesP(combined, rho, theta, threshold, minLineLength=min_line_length, maxLineGap=max_line_gap)
-
-    return [line_from_array(line, scale_ratio) for line in lines]
-
-
-def extract_lines(
-    page: pymupdf.Page, text_lines: list[TextLine], line_detection_params: dict
-) -> tuple[list[Line], list[Line]]:
+def extract_lines(page: pymupdf.Page, text_lines: list[TextLine], line_detection_params: dict) -> LineDetectionResult:
     """Extract lines from a pdf page.
 
     Geometric lines that fall entirely within a single word of some text line will be ignored.
@@ -114,23 +69,33 @@ def extract_lines(
         line_detection_params (dict): The parameters for line detection.
 
     Returns:
-        tuple[list[Line], list[Line]]: A tuple containing the filtered lines meeting length/horizontal criteria
-            and all merged lines.
+        LineDetectionResult
     """
-    lines = detect_lines_lsd(
-        page,
-        lsd_params=line_detection_params["lsd"],
-        scale_factor=line_detection_params["pdf_scale_factor"],
-    )
-    # We currently use lsd as it is more precise detecting smalls lines. The following comments shows how the hough
-    # transform line segment detector could be called, in case we need it later on.
-    #
-    # lines = detect_lines_hough(page, hough_params=line_detection_params["hough"])
+    horizontal_text_heights = [line.rect.height for line in text_lines if abs(line.text_angle) < 5]
+    if len(horizontal_text_heights) > 2:
+        median_text_height = statistics.median(horizontal_text_heights)
+        expected_text_height = line_detection_params["expected_text_height"]
+        cv_scale_factor = expected_text_height / median_text_height
+    else:
+        cv_scale_factor = line_detection_params["default_pdf_scale_factor"]
 
-    def grow_rect(rect: pymupdf.Rect, delta: float) -> pymupdf.Rect:
-        return pymupdf.Rect(rect.x0 - delta, rect.y0 - delta, rect.x1 + delta, rect.y1 + delta)
+    max_image_dimension = line_detection_params["max_image_dimension"]
+    max_scale_factor = max_image_dimension / max(page.rect.height, page.rect.width)
+    cv_scale_factor = min(cv_scale_factor, max_scale_factor)
+
+    lines = detect_lines_fld(
+        page,
+        fld_params=line_detection_params["fld"],
+        scale_factor=cv_scale_factor,
+    )
+
+    def grow_rect(rect: pymupdf.Rect, x_delta: float, y_delta) -> pymupdf.Rect:
+        return pymupdf.Rect(rect.x0 - x_delta, rect.y0 - y_delta, rect.x1 + x_delta, rect.y1 + y_delta)
 
     line_rtree = TextLineRTree(text_lines)
+
+    x_delta = 2 / cv_scale_factor
+    y_delta = 1 / cv_scale_factor
 
     def line_is_valid(line: Line) -> bool:
         line_bbox = pymupdf.Rect(
@@ -139,27 +104,27 @@ def extract_lines(
             x1=max(line.start.x, line.end.x),
             y1=max(line.start.y, line.end.y),
         )
-        matching_text_lines = line_rtree.query(line_bbox)
-        # grow each word's rect by 1 point because the line detection algorithm is only accurate to +/- 1 pixel
+        matching_text_lines = line_rtree.query(grow_rect(line_bbox, x_delta=x_delta, y_delta=y_delta))
+        # grow each word's rect to account for inaccuracies in the line detection and OCR positioning
         return all(
-            line.length > word.rect.height or not grow_rect(word.rect, 1).contains(line_bbox)
+            line.length > word.rect.height
+            or not grow_rect(word.rect, x_delta=x_delta, y_delta=y_delta).contains(line_bbox)
             for text_line in matching_text_lines
             for word in text_line.words
         )
 
     lines = [line for line in lines if line_is_valid(line)]
     if not lines:
-        return [], []
+        return LineDetectionResult([], [], cv_scale_factor)
 
     merging_params = line_detection_params["line_merging_params"]
 
-    width = page.rect[2]
-    scaling_factor = width / merging_params["reference_size"]
-
     # return lines
-    tol = merging_params["merging_tolerance"] * scaling_factor
+    tol = merging_params["merging_tolerance"]
     angle_threshold = merging_params["angle_threshold"]
-    min_line_length = merging_params["min_line_length"] * scaling_factor
+    min_line_length = merging_params["min_line_length"]
     merged = merge_parallel_lines_quadtree(lines, tol=tol, angle_threshold=angle_threshold)
     filtered = [line for line in merged if line.length >= min_line_length or line.is_horizontal(angle_threshold)]
-    return filtered, merged
+    return LineDetectionResult(
+        long_or_horizontal_lines=filtered, all_geometric_lines=merged, cv_scale_factor=cv_scale_factor
+    )

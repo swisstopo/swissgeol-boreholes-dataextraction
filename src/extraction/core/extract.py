@@ -22,8 +22,7 @@ from extraction.features.predictions.predictions import (
     resolve_boreholeless_pages,
 )
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
-from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
-from swissgeol_doc_processing.geometry.line_detection import extract_lines
+from swissgeol_doc_processing.geometry.line_detection import LineDetectionResult, extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
 from swissgeol_doc_processing.utils.file_utils import read_params
@@ -44,7 +43,7 @@ class PageExtractionData:
     """Intermediate per-page detection data, needed for optional visualization."""
 
     page_index: int
-    lines: list[Line]
+    line_detection_result: LineDetectionResult
     table_structures: list[TableStructure]
     strip_logs: list[StripLog]
 
@@ -131,14 +130,18 @@ def extract(
             logger.info(f"Processing page {page_number}")
 
             text_lines = extract_text_lines(page)
-            long_or_horizontal_lines, all_geometric_lines = extract_lines(page, text_lines, line_detection_params)
+            line_detection_result = extract_lines(page, text_lines, line_detection_params)
             name_entries = extract_borehole_names(text_lines, name_detection_params)
             elevation_entries = [e for e in metadata.elevations if e.page_number == page_number]
             coordinate_entries = [c for c in metadata.coordinates if c.page_number == page_number]
 
             # Detect table structures on the page
             table_structures = detect_table_structures(
-                page.rect.width, page.rect.height, long_or_horizontal_lines, text_lines, table_detection_params
+                page.rect.width,
+                page.rect.height,
+                line_detection_result.long_or_horizontal_lines,
+                text_lines,
+                table_detection_params,
             )
 
             # Detect strip logs on the page
@@ -147,8 +150,7 @@ def extract(
             # Extract the stratigraphy
             extracted_boreholes = BoreholeExtractor(
                 text_lines,
-                long_or_horizontal_lines,
-                all_geometric_lines,
+                line_detection_result,
                 table_structures,
                 strip_logs,
                 file_metadata.language,
@@ -166,7 +168,7 @@ def extract(
             groundwater_entries = groundwater_extractor.extract_groundwater(
                 page_number=page_number,
                 text_lines=text_lines,
-                geometric_lines=long_or_horizontal_lines,
+                geometric_lines=line_detection_result.long_or_horizontal_lines,
                 extracted_boreholes=extracted_boreholes,
             )
 
@@ -189,7 +191,7 @@ def extract(
             pages_data.append(
                 PageExtractionData(
                     page_index=page_index,
-                    lines=all_geometric_lines,
+                    line_detection_result=line_detection_result,
                     table_structures=table_structures,
                     strip_logs=strip_logs,
                 )

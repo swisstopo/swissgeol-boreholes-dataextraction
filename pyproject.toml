@@ -29,7 +29,7 @@ dependencies = [
     "regex==2025.7.34",
     "backoff==2.2.1",
     "PyMuPDF==1.26.3",
-    "opencv-python-headless==4.12.0.88",
+    "opencv-contrib-python-headless==5.0.0.93",
     "fastquadtree==2.0.2",
     "numpy==2.2.6",
     "nltk==3.9.1",
@@ -57,7 +57,7 @@ azure-remote = [
     "azureml-mlflow",
 ]
 experiment-tracking = [
-    "mlflow>=2.15.0,<3.0.0",
+    "mlflow==3.17.0",
     "pygit2==1.18.2"
 ]
 visualize = [
