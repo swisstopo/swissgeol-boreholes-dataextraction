@@ -45,7 +45,8 @@ def detect_lines_fld(page: pymupdf.Page, scale_factor=2, fld_params=None) -> lis
     pix = page.get_pixmap(matrix=pymupdf.Matrix(scale_factor, scale_factor), colorspace=pymupdf.csGRAY)
     reshaped = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w)
 
-    # Create default line segment detector
+    # The Fast Line Detector also has an option do_merge for line merging, but this is significantly slower than
+    # our own approach, so we use our approach and do not use the do_merge option of FLD.
     fld = cv2.ximgproc.createFastLineDetector(**fld_params)
 
     # Detect lines in the image
