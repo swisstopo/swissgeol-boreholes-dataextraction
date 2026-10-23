@@ -8,7 +8,6 @@ duplicate_layer_threshold: 0.90
 min_num_layers: 2
 protocol_min_num_layers: 1
 protocol_great_match_threshold: 0.1
-fallback_min_table_height_ratio: 0.85
 affinity_params:
   a_above_b:
     importance: 5.0

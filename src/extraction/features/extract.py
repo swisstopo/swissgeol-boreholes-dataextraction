@@ -482,13 +482,23 @@ class BoreholeExtractor:
             An optional BoreholeCandidate object, which will not have a sidebar.
         """
         # only allow sidebar=None fallback if strong evidence exists
-        if self._allow_description_only_fallback():
-            return self._find_borehole_candidate(sidebar=None)
-        else:
-            logger.debug(
-                "Page %s: skipping description-only fallback (insufficient evidence)",
-                self.page_number,
-            )
+        has_table = bool(self.table_structures)
+        has_striplog = bool(self.strip_logs)
+        if has_table or has_striplog:
+            borehole_candidate = self._find_borehole_candidate(sidebar=None)
+            if borehole_candidate and (
+                has_striplog
+                or any(
+                    table.bounding_rect.intersects(borehole_candidate.material_description_rect)
+                    for table in self.table_structures
+                )
+            ):
+                return borehole_candidate
+
+        logger.debug(
+            "Page %s: skipping description-only fallback (insufficient evidence)",
+            self.page_number,
+        )
         return None
 
     def _extract_filtered_borehole_candidates(self) -> list[BoreholeCandidate]:
@@ -528,31 +538,6 @@ class BoreholeExtractor:
             number_of_good_sidebars=len(good_borehole_candidates),
             best_sidebar_score=best_candidate_score,
         )
-
-    def _allow_description_only_fallback(self) -> bool:
-        """Return True if we have strong evidence that a description-only borehole is plausible.
-
-        This is meant to reduce false-positive boreholes created from random paragraphs.
-        """
-        # Table evidence thresholds
-        min_table_height_ratio = self.matching_params.get("fallback_min_table_height_ratio", 0.85)
-
-        has_table = bool(self.table_structures)
-        has_striplog = bool(self.strip_logs)
-
-        # If strip-log exists, that's a borehole
-        if has_striplog:
-            return True
-
-        if not has_table:
-            return False
-
-        # For now, we require the table height to exceed a specific threshold in order to reduce false positives from
-        # small tables which might include keywords in their description, misleadingly classifying them as boreholes.
-        # BUT: TODO keep in mind that this might exclude some boreholes (e.g scanned image has large margin above and
-        # below the actual scanned page) --> this mechanism could/should be optimized in the future!
-        largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
-        return (largest_table.bounding_rect.height / max(self.page_height, 1e-16)) >= min_table_height_ratio
 
 
 def _split_text_lines_by_table_structures(
