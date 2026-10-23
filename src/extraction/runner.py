@@ -72,7 +72,6 @@ class ExtractionOptions:
     """Options for the extraction runner."""
 
     matching_analytics: bool = False
-    part: str = "all"
 
 
 @dataclass(kw_only=True)
@@ -91,7 +90,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     def __post_init__(self) -> None:
         super().__post_init__()
         self.analytics = create_analytics() if self.options.matching_analytics else None
-        self.copy_predictions_to_final = self.options.part == "all"
+        self.copy_predictions_to_final = True
         self.out_directory.mkdir(parents=True, exist_ok=True)
 
     def setup_mlflow_run(self, runid: str | None) -> str:
@@ -149,7 +148,6 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
             result = extract(
                 file=pdf_file,
                 filename=pdf_file.name,
-                part=self.options.part,
                 analytics=self.analytics,
                 on_page_done=self.on_page_done,
             )

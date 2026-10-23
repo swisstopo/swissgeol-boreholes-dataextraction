@@ -86,7 +86,6 @@ def open_pdf(
 def extract(
     file: Path | BytesIO,
     filename: str,
-    part: str = "all",
     analytics: MatchingParamsAnalytics | None = None,
     on_page_done: Callable[[pymupdf.Page, PageExtractionData], None] | None = None,
 ) -> ExtractionResult:
@@ -98,7 +97,6 @@ def extract(
     Args:
         file (Path | BytesIO): Path or stream of file to process.
         filename (str): Name of the file used as identifier.
-        part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
         analytics (MatchingParamsAnalytics): Analytics object for tracking matching parameters. Defaults to None.
         on_page_done (Callable[[pymupdf.Page, PageExtractionData], None] | None):
             Callback for visualizations to be produced after every page.
@@ -119,14 +117,6 @@ def extract(
         boreholes_per_page = []
         boreholeless_pages = []
         cv_scale_factors = []
-
-        if part != "all":
-            return ExtractionResult(
-                predictions=FilePredictions(
-                    borehole_predictions_list=[], file_metadata=file_metadata, file_name=filename
-                ),
-                cv_scale_factor=[],
-            )
 
         # Extract the Flayers
         for page_index, page in enumerate(doc):

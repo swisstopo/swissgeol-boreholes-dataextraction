@@ -160,37 +160,6 @@ def test_start_pipeline_drawing(tmp_path: Path, borehole_pdf: Path) -> None:
     assert len(set(file_counts)) == 1
 
 
-def test_start_pipeline_part(tmp_path: Path, borehole_pdf: Path) -> None:
-    """Test that pipeline generation is tied to part.
-
-    Args:
-        tmp_path (Path): Path to temporary folder (pytest handled).
-        borehole_pdf (Path): Path to borehole PDF file.
-    """
-    predictions_path = tmp_path / PREDICTION_FILE_
-
-    def infer_part(part: str = "all") -> None:
-        """Inference of pipeline with part as parameter.
-
-        Args:
-            part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
-        """
-        ExtractionPipelineRunner(
-            predictions_path=predictions_path,
-            input_directory=borehole_pdf,
-            ground_truth_path=None,
-            out_directory=tmp_path,
-            options=ExtractionOptions(part=part),
-        ).execute()
-
-    # Check inference of all vs not all
-    infer_part(part="metadata")
-    assert not predictions_path.exists()
-
-    infer_part(part="all")
-    assert predictions_path.exists()
-
-
 def test_start_pipeline_nested(tmp_path: Path, borehole_pdf: Path) -> None:
     """Test that pipeline resumes from temporary file and skips already processed files.
 
