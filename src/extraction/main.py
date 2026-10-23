@@ -134,6 +134,7 @@ def click_pipeline(
         draw_lines=draw_lines,
         draw_tables=draw_tables,
         draw_strip_logs=draw_strip_logs,
+        out_directory=out_directory,
     )
 
     # --- Multi-benchmark mode ---
@@ -145,6 +146,7 @@ def click_pipeline(
             resume=resume,
             options=ExtractionOptions(matching_analytics=matching_analytics, part=part),
             on_file_done=factory.on_file_done,
+            on_page_done=factory.on_page_done,
         ).run()
     # --- Single-benchmark mode ---
     else:
@@ -159,6 +161,7 @@ def click_pipeline(
             out_directory=out_directory,
             options=ExtractionOptions(matching_analytics=matching_analytics, part=part),
             on_file_done=factory.on_file_done,
+            on_page_done=factory.on_page_done,
         ).execute()
 
 
@@ -184,6 +187,7 @@ def click_pipeline_metadata(
         draw_lines=draw_lines,
         draw_tables=draw_tables,
         draw_strip_logs=draw_strip_logs,
+        out_directory=out_directory,
     )
     ExtractionPipelineRunner(
         predictions_path=predictions_path,
@@ -193,6 +197,7 @@ def click_pipeline_metadata(
         out_directory=out_directory,
         options=ExtractionOptions(matching_analytics=matching_analytics, part="metadata"),
         on_file_done=factory.on_file_done,
+        on_page_done=factory.on_page_done,
     ).execute()
 
 

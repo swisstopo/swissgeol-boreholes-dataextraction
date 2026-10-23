@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeVar
 
+import pymupdf
 from pydantic import ValidationError
 from tqdm import tqdm
 
@@ -16,7 +17,7 @@ from core.ground_truth import GroundTruth
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_tracking
 from core.pipeline_runner import MultiBenchmarkRunner, PipelineRunner, PipelineRunResult
-from extraction.core.extract import ExtractionResult, extract
+from extraction.core.extract import ExtractionResult, PageExtractionData, extract
 from extraction.evaluation.benchmark.score import (
     ExtractionBenchmarkSummary,
     evaluate_all_predictions,
@@ -82,7 +83,8 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     ground_truth_path: Path | None
     out_directory: Path
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
-    on_file_done: Callable[[ExtractionResult, Path, Path], None] | None = None
+    on_file_done: Callable[[ExtractionResult, Path], None] | None = None
+    on_page_done: Callable[[pymupdf.Page, PageExtractionData], None] | None = None
     runname: str | None = None
     analytics: MatchingParamsAnalytics | None = field(init=False, default=None)
 
@@ -144,13 +146,19 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
 
             logger.info(f"Processing file: {pdf_file.name}")
 
-            result = extract(file=pdf_file, filename=pdf_file.name, part=self.options.part, analytics=self.analytics)
+            result = extract(
+                file=pdf_file,
+                filename=pdf_file.name,
+                part=self.options.part,
+                analytics=self.analytics,
+                on_page_done=self.on_page_done,
+            )
             prediction_with_metrics = evaluate_prediction(result.predictions, ground_truth)
             predictions.add_file_predictions(prediction_with_metrics)
 
             if self.on_file_done is not None:
                 # Pass updated results to callback
-                self.on_file_done(result, self.out_directory, pdf_file)
+                self.on_file_done(result, pdf_file)
 
             logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
             write_json_predictions(path=predictions_path_tmp, predictions=predictions)
@@ -243,7 +251,8 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
     runname = "benchmark"
 
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
-    on_file_done: Callable[[ExtractionResult, Path, Path], None] | None = None
+    on_file_done: Callable[[ExtractionResult, Path], None] | None = None
+    on_page_done: Callable[[pymupdf.Page, PageExtractionData], None] | None = None
 
     def run_single(self, spec: BenchmarkSpec) -> ExtractionBenchmarkSummary | None:
         logger.info("Running benchmark: %s", spec.name)
@@ -259,5 +268,6 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
             out_directory=bench_out,
             options=self.options,
             on_file_done=self.on_file_done,
+            on_page_done=self.on_page_done,
             runname=spec.name,
         ).execute()

@@ -2,7 +2,7 @@
 
 import dataclasses
 import logging
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 class PageExtractionData:
     """Intermediate per-page detection data, needed for optional visualization."""
 
+    file_name: str
     page_index: int
     line_detection_result: LineDetectionResult
     table_structures: list[TableStructure]
@@ -53,7 +54,7 @@ class ExtractionResult:
     """Full output of extract(): predictions and per-page data needed for visualization."""
 
     predictions: FilePredictions
-    pages_data: list[PageExtractionData]
+    cv_scale_factor: list[float]
 
 
 @contextmanager
@@ -87,6 +88,7 @@ def extract(
     filename: str,
     part: str = "all",
     analytics: MatchingParamsAnalytics | None = None,
+    on_page_done: Callable[[pymupdf.Page, PageExtractionData], None] | None = None,
 ) -> ExtractionResult:
     """Extract pipeline for input file.
 
@@ -98,6 +100,8 @@ def extract(
         filename (str): Name of the file used as identifier.
         part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
         analytics (MatchingParamsAnalytics): Analytics object for tracking matching parameters. Defaults to None.
+        on_page_done (Callable[[pymupdf.Page, PageExtractionData], None] | None):
+            Callback for visualizations to be produced after every page.
 
     Returns:
         ExtractionResult: Predictions and per-page detection data for the input file.
@@ -114,14 +118,14 @@ def extract(
         # Save the predictions to the overall predictions object, initialize common variables
         boreholes_per_page = []
         boreholeless_pages = []
-        pages_data = []
+        cv_scale_factors = []
 
         if part != "all":
             return ExtractionResult(
                 predictions=FilePredictions(
                     borehole_predictions_list=[], file_metadata=file_metadata, file_name=filename
                 ),
-                pages_data=[],
+                cv_scale_factor=[],
             )
 
         # Extract the Flayers
@@ -187,15 +191,18 @@ def extract(
                 # attach it to an adjacent page's borehole once all pages have been processed.
                 boreholeless_pages.append(page_metadata)
 
-            # Store per-page intermediate data for optional downstream visualization
-            pages_data.append(
-                PageExtractionData(
-                    page_index=page_index,
-                    line_detection_result=line_detection_result,
-                    table_structures=table_structures,
-                    strip_logs=strip_logs,
-                )
+            page_data = PageExtractionData(
+                file_name=filename,
+                page_index=page_index,
+                line_detection_result=line_detection_result,
+                table_structures=table_structures,
+                strip_logs=strip_logs,
             )
+            if on_page_done is not None:
+                on_page_done(page, page_data)
+
+            # Store per-page intermediate data for optional downstream visualization
+            cv_scale_factors.append(line_detection_result.cv_scale_factor)
 
         resolve_boreholeless_pages(boreholes_per_page, boreholeless_pages)
 
@@ -212,5 +219,5 @@ def extract(
             predictions=FilePredictions(
                 borehole_predictions_list=borehole_predictions_list, file_metadata=file_metadata, file_name=filename
             ),
-            pages_data=pages_data,
+            cv_scale_factor=cv_scale_factors,
         )

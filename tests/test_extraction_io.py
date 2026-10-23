@@ -109,7 +109,12 @@ def test_start_pipeline_csv(tmp_path: Path, borehole_pdf: Path) -> None:
         borehole_pdf (Path): Path to borehole PDF file.
     """
     callback = CallbackFactory(
-        write_csv=True, skip_draw_predictions=True, draw_lines=False, draw_tables=False, draw_strip_logs=False
+        write_csv=True,
+        skip_draw_predictions=True,
+        draw_lines=False,
+        draw_tables=False,
+        draw_strip_logs=False,
+        out_directory=tmp_path,
     )
     ExtractionPipelineRunner(
         predictions_path=tmp_path / PREDICTION_FILE_,
@@ -130,7 +135,12 @@ def test_start_pipeline_drawing(tmp_path: Path, borehole_pdf: Path) -> None:
         borehole_pdf (Path): Path to borehole PDF file.
     """
     callback = CallbackFactory(
-        write_csv=False, skip_draw_predictions=False, draw_lines=True, draw_tables=True, draw_strip_logs=True
+        write_csv=False,
+        skip_draw_predictions=False,
+        draw_lines=True,
+        draw_tables=True,
+        draw_strip_logs=True,
+        out_directory=tmp_path,
     )
     ExtractionPipelineRunner(
         predictions_path=tmp_path / PREDICTION_FILE_,
