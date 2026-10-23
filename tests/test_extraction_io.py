@@ -148,6 +148,7 @@ def test_start_pipeline_drawing(tmp_path: Path, borehole_pdf: Path) -> None:
         ground_truth_path=None,
         out_directory=tmp_path,
         on_file_done=callback.on_file_done,
+        on_page_done=callback.on_page_done,
     ).execute()
 
     # Generated files
