@@ -7,8 +7,12 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+import pymupdf
+
 from core.mlflow_tracking import mlflow
-from extraction.core.extract import ExtractionResult, open_pdf
+from extraction.annotations.draw import plot_prediction, plot_strip_logs, plot_tables
+from extraction.annotations.plot_utils import plot_lines, save_visualization
+from extraction.core.extract import ExtractionResult, PageExtractionData, open_pdf
 from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary
 from extraction.features.predictions.file_predictions import FilePredictions
 from swissgeol_doc_processing.utils.file_utils import read_params
@@ -76,52 +80,54 @@ class CallbackFactory:
     draw_lines: bool
     draw_tables: bool
     draw_strip_logs: bool
+    out_directory: Path
 
-    def on_file_done(self, result: ExtractionResult, out_directory: Path, pdf_path: Path) -> None:
+    def on_page_done(self, page: pymupdf.Page, page_data: PageExtractionData) -> None:
+        scale_factor = page_data.line_detection_result.cv_scale_factor
+        page_number = page_data.page_index + 1
+
+        file_name = page_data.file_name
+
+        draw_directory = self.out_directory / "draw"
+        draw_directory.mkdir(parents=True, exist_ok=True)
+
+        if self.draw_tables:
+            img = plot_tables(page, page_data.table_structures, page_data.page_index, scale_factor)
+            save_visualization(img, file_name, page_number, "tables", draw_directory)
+
+        if self.draw_strip_logs:
+            img = plot_strip_logs(page, page_data.strip_logs, page_data.page_index, scale_factor)
+            save_visualization(img, file_name, page_number, "strip_logs", draw_directory)
+
+        if self.draw_lines:
+            img = plot_lines(page, page_data.line_detection_result)
+            save_visualization(img, file_name, page_number, "lines", draw_directory)
+
+    def on_file_done(self, result: ExtractionResult, pdf_path: Path) -> None:
         """Write CSV and/or draw visualizations for a single extracted file.
 
         MLflow artifact logging for CSV files is performed here when tracking is active.
 
         Args:
             result (ExtractionResult): Output of extract() for this file.
-            out_directory (Path): Directory for output artifacts.
             pdf_path (Path): File path of the input PDF.
         """
         if self.write_csv:
-            csv_paths = write_csv_for_file(result.predictions, out_directory)
+            csv_paths = write_csv_for_file(result.predictions, self.out_directory)
             if mlflow:
                 for csv_path in csv_paths:
                     mlflow.log_artifact(str(csv_path), "csv")
 
-        if not self.skip_draw_predictions or self.draw_lines or self.draw_tables or self.draw_strip_logs:
+        if not self.skip_draw_predictions:
             file_name = result.predictions.file_name
-            from extraction.annotations.draw import plot_prediction, plot_strip_logs, plot_tables
-            from extraction.annotations.plot_utils import plot_lines, save_visualization
 
-            draw_directory = out_directory / "draw"
+            draw_directory = self.out_directory / "draw"
             draw_directory.mkdir(parents=True, exist_ok=True)
 
             logger.info("Drawing predictions for file %s", file_name)
             with open_pdf(file=pdf_path, filename=file_name) as doc:
-                for page_data in result.pages_data:
-                    page = doc[page_data.page_index]
-                    page_number = page_data.page_index + 1
-
-                    scale_factor = page_data.line_detection_result.cv_scale_factor
-
-                    if self.draw_tables:
-                        img = plot_tables(page, page_data.table_structures, page_data.page_index, scale_factor)
-                        save_visualization(img, file_name, page_number, "tables", draw_directory)
-
-                    if self.draw_strip_logs:
-                        img = plot_strip_logs(page, page_data.strip_logs, page_data.page_index, scale_factor)
-                        save_visualization(img, file_name, page_number, "strip_logs", draw_directory)
-
-                    if self.draw_lines:
-                        img = plot_lines(page, page_data.line_detection_result)
-                        save_visualization(img, file_name, page_number, "lines", draw_directory)
-
-                    if not self.skip_draw_predictions:
-                        plot_prediction(result.predictions, page, draw_directory, scale_factor)
+                for page_index, page in enumerate(doc):
+                    scale_factor = result.cv_scale_factor[page_index]
+                    plot_prediction(result.predictions, page, draw_directory, scale_factor)
 
             logger.info("Finished drawing predictions for file %s", file_name)
