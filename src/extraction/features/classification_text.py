@@ -47,7 +47,7 @@ def extract_borehole_texts(
     Returns:
         list[BoreholeText]: One entry per borehole detected in the file, in `borehole_index` order.
     """
-    result = extract(file=file, filename=filename, part="all")
+    result = extract(file=file, filename=filename)
     language = result.predictions.file_metadata.language
 
     with open_pdf(file=file, filename=filename) as doc:

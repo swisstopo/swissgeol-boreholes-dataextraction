@@ -106,9 +106,6 @@ def common_options(f):
 )
 @click.command()
 @common_options
-@click.option(
-    "-pa", "--part", type=click.Choice(["all", "metadata"]), default="all", help="The part of the pipeline to run."
-)
 def click_pipeline(
     input_directory: Path | None,
     ground_truth_path: Path | None,
@@ -120,7 +117,6 @@ def click_pipeline(
     draw_strip_logs: bool = False,
     csv: bool = False,
     matching_analytics: bool = False,
-    part: str = "all",
     resume: bool = False,
     benchmarks: tuple[str, ...] = (),
 ):
@@ -143,8 +139,8 @@ def click_pipeline(
             benchmarks=specs,
             multi_root=out_directory,
             resume=resume,
-            options=ExtractionOptions(matching_analytics=matching_analytics, part=part),
-            on_file_done=factory.on_file_done,
+            options=ExtractionOptions(matching_analytics=matching_analytics),
+            callback_factory=factory,
         ).run()
     # --- Single-benchmark mode ---
     else:
@@ -157,43 +153,10 @@ def click_pipeline(
             input_directory=input_directory,
             ground_truth_path=ground_truth_path,
             out_directory=out_directory,
-            options=ExtractionOptions(matching_analytics=matching_analytics, part=part),
-            on_file_done=factory.on_file_done,
+            options=ExtractionOptions(matching_analytics=matching_analytics),
+            on_file_done=factory.on_file_done(out_directory),
+            on_page_done=factory.on_page_done(out_directory),
         ).execute()
-
-
-@click.command()
-@common_options
-def click_pipeline_metadata(
-    input_directory: Path,
-    ground_truth_path: Path | None,
-    out_directory: Path,
-    predictions_path: Path,
-    skip_draw_predictions: bool = False,
-    draw_lines: bool = False,
-    draw_tables: bool = False,
-    draw_strip_logs: bool = False,
-    csv: bool = False,
-    resume: bool = False,
-    matching_analytics: bool = False,
-):
-    """Run only the metadata part of the pipeline."""
-    factory = CallbackFactory(
-        write_csv=csv,
-        skip_draw_predictions=skip_draw_predictions,
-        draw_lines=draw_lines,
-        draw_tables=draw_tables,
-        draw_strip_logs=draw_strip_logs,
-    )
-    ExtractionPipelineRunner(
-        predictions_path=predictions_path,
-        resume=bool(resume),
-        input_directory=input_directory,
-        ground_truth_path=ground_truth_path,
-        out_directory=out_directory,
-        options=ExtractionOptions(matching_analytics=matching_analytics, part="metadata"),
-        on_file_done=factory.on_file_done,
-    ).execute()
 
 
 if __name__ == "__main__":

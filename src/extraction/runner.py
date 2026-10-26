@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeVar
 
+import pymupdf
 from pydantic import ValidationError
 from tqdm import tqdm
 
@@ -16,7 +17,7 @@ from core.ground_truth import GroundTruth
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_tracking
 from core.pipeline_runner import MultiBenchmarkRunner, PipelineRunner, PipelineRunResult
-from extraction.core.extract import ExtractionResult, extract
+from extraction.core.extract import ExtractionResult, PageExtractionData, extract
 from extraction.evaluation.benchmark.score import (
     ExtractionBenchmarkSummary,
     evaluate_all_predictions,
@@ -25,7 +26,7 @@ from extraction.evaluation.benchmark.score import (
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
-from extraction.utils.benchmark_utils import log_metric_mlflow
+from extraction.utils.benchmark_utils import CallbackFactory, log_metric_mlflow
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, create_analytics
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
 
@@ -71,7 +72,6 @@ class ExtractionOptions:
     """Options for the extraction runner."""
 
     matching_analytics: bool = False
-    part: str = "all"
 
 
 @dataclass(kw_only=True)
@@ -82,14 +82,15 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     ground_truth_path: Path | None
     out_directory: Path
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
-    on_file_done: Callable[[ExtractionResult, Path, Path], None] | None = None
+    on_file_done: Callable[[ExtractionResult, Path], None] | None = None
+    on_page_done: Callable[[pymupdf.Page, PageExtractionData], None] | None = None
     runname: str | None = None
     analytics: MatchingParamsAnalytics | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
         super().__post_init__()
         self.analytics = create_analytics() if self.options.matching_analytics else None
-        self.copy_predictions_to_final = self.options.part == "all"
+        self.copy_predictions_to_final = True
         self.out_directory.mkdir(parents=True, exist_ok=True)
 
     def setup_mlflow_run(self, runid: str | None) -> str:
@@ -144,13 +145,18 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
 
             logger.info(f"Processing file: {pdf_file.name}")
 
-            result = extract(file=pdf_file, filename=pdf_file.name, part=self.options.part, analytics=self.analytics)
+            result = extract(
+                file=pdf_file,
+                filename=pdf_file.name,
+                analytics=self.analytics,
+                on_page_done=self.on_page_done,
+            )
             prediction_with_metrics = evaluate_prediction(result.predictions, ground_truth)
             predictions.add_file_predictions(prediction_with_metrics)
 
             if self.on_file_done is not None:
                 # Pass updated results to callback
-                self.on_file_done(result, self.out_directory, pdf_file)
+                self.on_file_done(result, pdf_file)
 
             logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
             write_json_predictions(path=predictions_path_tmp, predictions=predictions)
@@ -243,12 +249,15 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
     runname = "benchmark"
 
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
-    on_file_done: Callable[[ExtractionResult, Path, Path], None] | None = None
+    callback_factory: CallbackFactory | None = None
 
     def run_single(self, spec: BenchmarkSpec) -> ExtractionBenchmarkSummary | None:
         logger.info("Running benchmark: %s", spec.name)
         bench_out = self.multi_root / spec.name
         bench_out.mkdir(parents=True, exist_ok=True)
+
+        on_file_done = self.callback_factory.on_file_done(bench_out) if self.callback_factory else None
+        on_page_done = self.callback_factory.on_page_done(bench_out) if self.callback_factory else None
 
         return ExtractionPipelineRunner(
             predictions_path=bench_out / "predictions.json",
@@ -258,6 +267,7 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
             ground_truth_path=spec.ground_truth_path,
             out_directory=bench_out,
             options=self.options,
-            on_file_done=self.on_file_done,
+            on_file_done=on_file_done,
+            on_page_done=on_page_done,
             runname=spec.name,
         ).execute()
