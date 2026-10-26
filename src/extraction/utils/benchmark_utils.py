@@ -130,8 +130,7 @@ class CallbackFactory:
 
                 logger.info("Drawing predictions for file %s", file_name)
                 with open_pdf(file=pdf_path, filename=file_name) as doc:
-                    for page_index, page in enumerate(doc):
-                        scale_factor = result.cv_scale_factor[page_index]
+                    for page, scale_factor in zip(doc, result.cv_scale_factor, strict=False):
                         plot_prediction(result.predictions, page, draw_directory, scale_factor)
 
                 logger.info("Finished drawing predictions for file %s", file_name)

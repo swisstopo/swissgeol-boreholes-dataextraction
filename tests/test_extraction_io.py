@@ -114,14 +114,13 @@ def test_start_pipeline_csv(tmp_path: Path, borehole_pdf: Path) -> None:
         draw_lines=False,
         draw_tables=False,
         draw_strip_logs=False,
-        out_directory=tmp_path,
     )
     ExtractionPipelineRunner(
         predictions_path=tmp_path / PREDICTION_FILE_,
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        on_file_done=callback.on_file_done,
+        on_file_done=callback.on_file_done(tmp_path),
     ).execute()
     # Check generated csv files
     assert len([f for f in tmp_path.rglob("*.csv")]) != 0
@@ -140,15 +139,14 @@ def test_start_pipeline_drawing(tmp_path: Path, borehole_pdf: Path) -> None:
         draw_lines=True,
         draw_tables=True,
         draw_strip_logs=True,
-        out_directory=tmp_path,
     )
     ExtractionPipelineRunner(
         predictions_path=tmp_path / PREDICTION_FILE_,
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        on_file_done=callback.on_file_done,
-        on_page_done=callback.on_page_done,
+        on_file_done=callback.on_file_done(tmp_path),
+        on_page_done=callback.on_page_done(tmp_path),
     ).execute()
 
     # Generated files
