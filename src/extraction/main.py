@@ -130,7 +130,6 @@ def click_pipeline(
         draw_lines=draw_lines,
         draw_tables=draw_tables,
         draw_strip_logs=draw_strip_logs,
-        out_directory=out_directory,
     )
 
     # --- Multi-benchmark mode ---
@@ -141,8 +140,7 @@ def click_pipeline(
             multi_root=out_directory,
             resume=resume,
             options=ExtractionOptions(matching_analytics=matching_analytics),
-            on_file_done=factory.on_file_done,
-            on_page_done=factory.on_page_done,
+            callback_factory=factory,
         ).run()
     # --- Single-benchmark mode ---
     else:
@@ -156,8 +154,8 @@ def click_pipeline(
             ground_truth_path=ground_truth_path,
             out_directory=out_directory,
             options=ExtractionOptions(matching_analytics=matching_analytics),
-            on_file_done=factory.on_file_done,
-            on_page_done=factory.on_page_done,
+            on_file_done=factory.on_file_done(out_directory),
+            on_page_done=factory.on_page_done(out_directory),
         ).execute()
 
 

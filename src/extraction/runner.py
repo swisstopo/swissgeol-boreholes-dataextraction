@@ -26,7 +26,7 @@ from extraction.evaluation.benchmark.score import (
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
-from extraction.utils.benchmark_utils import log_metric_mlflow
+from extraction.utils.benchmark_utils import CallbackFactory, log_metric_mlflow
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, create_analytics
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
 
@@ -249,13 +249,15 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
     runname = "benchmark"
 
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
-    on_file_done: Callable[[ExtractionResult, Path], None] | None = None
-    on_page_done: Callable[[pymupdf.Page, PageExtractionData], None] | None = None
+    callback_factory: CallbackFactory | None = None
 
     def run_single(self, spec: BenchmarkSpec) -> ExtractionBenchmarkSummary | None:
         logger.info("Running benchmark: %s", spec.name)
         bench_out = self.multi_root / spec.name
         bench_out.mkdir(parents=True, exist_ok=True)
+
+        on_file_done = self.callback_factory.on_file_done(bench_out) if self.callback_factory else None
+        on_page_done = self.callback_factory.on_page_done(bench_out) if self.callback_factory else None
 
         return ExtractionPipelineRunner(
             predictions_path=bench_out / "predictions.json",
@@ -265,7 +267,7 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
             ground_truth_path=spec.ground_truth_path,
             out_directory=bench_out,
             options=self.options,
-            on_file_done=self.on_file_done,
-            on_page_done=self.on_page_done,
+            on_file_done=on_file_done,
+            on_page_done=on_page_done,
             runname=spec.name,
         ).execute()

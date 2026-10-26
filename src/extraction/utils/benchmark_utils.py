@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -80,54 +81,59 @@ class CallbackFactory:
     draw_lines: bool
     draw_tables: bool
     draw_strip_logs: bool
-    out_directory: Path
 
-    def on_page_done(self, page: pymupdf.Page, page_data: PageExtractionData) -> None:
-        scale_factor = page_data.line_detection_result.cv_scale_factor
-        page_number = page_data.page_index + 1
+    def on_page_done(self, out_directory: Path) -> Callable[[pymupdf.Page, PageExtractionData], None]:
+        def callback(page: pymupdf.Page, page_data: PageExtractionData) -> None:
+            scale_factor = page_data.line_detection_result.cv_scale_factor
+            page_number = page_data.page_index + 1
 
-        file_name = page_data.file_name
+            file_name = page_data.file_name
 
-        draw_directory = self.out_directory / "draw"
-        draw_directory.mkdir(parents=True, exist_ok=True)
-
-        if self.draw_tables:
-            img = plot_tables(page, page_data.table_structures, page_data.page_index, scale_factor)
-            save_visualization(img, file_name, page_number, "tables", draw_directory)
-
-        if self.draw_strip_logs:
-            img = plot_strip_logs(page, page_data.strip_logs, page_data.page_index, scale_factor)
-            save_visualization(img, file_name, page_number, "strip_logs", draw_directory)
-
-        if self.draw_lines:
-            img = plot_lines(page, page_data.line_detection_result)
-            save_visualization(img, file_name, page_number, "lines", draw_directory)
-
-    def on_file_done(self, result: ExtractionResult, pdf_path: Path) -> None:
-        """Write CSV and/or draw visualizations for a single extracted file.
-
-        MLflow artifact logging for CSV files is performed here when tracking is active.
-
-        Args:
-            result (ExtractionResult): Output of extract() for this file.
-            pdf_path (Path): File path of the input PDF.
-        """
-        if self.write_csv:
-            csv_paths = write_csv_for_file(result.predictions, self.out_directory)
-            if mlflow:
-                for csv_path in csv_paths:
-                    mlflow.log_artifact(str(csv_path), "csv")
-
-        if not self.skip_draw_predictions:
-            file_name = result.predictions.file_name
-
-            draw_directory = self.out_directory / "draw"
+            draw_directory = out_directory / "draw"
             draw_directory.mkdir(parents=True, exist_ok=True)
 
-            logger.info("Drawing predictions for file %s", file_name)
-            with open_pdf(file=pdf_path, filename=file_name) as doc:
-                for page_index, page in enumerate(doc):
-                    scale_factor = result.cv_scale_factor[page_index]
-                    plot_prediction(result.predictions, page, draw_directory, scale_factor)
+            if self.draw_tables:
+                img = plot_tables(page, page_data.table_structures, page_data.page_index, scale_factor)
+                save_visualization(img, file_name, page_number, "tables", draw_directory)
 
-            logger.info("Finished drawing predictions for file %s", file_name)
+            if self.draw_strip_logs:
+                img = plot_strip_logs(page, page_data.strip_logs, page_data.page_index, scale_factor)
+                save_visualization(img, file_name, page_number, "strip_logs", draw_directory)
+
+            if self.draw_lines:
+                img = plot_lines(page, page_data.line_detection_result)
+                save_visualization(img, file_name, page_number, "lines", draw_directory)
+
+        return callback
+
+    def on_file_done(self, out_directory: Path) -> Callable[[ExtractionResult, Path], None]:
+        def callback(result: ExtractionResult, pdf_path: Path) -> None:
+            """Write CSV and/or draw visualizations for a single extracted file.
+
+            MLflow artifact logging for CSV files is performed here when tracking is active.
+
+            Args:
+                result (ExtractionResult): Output of extract() for this file.
+                pdf_path (Path): File path of the input PDF.
+            """
+            if self.write_csv:
+                csv_paths = write_csv_for_file(result.predictions, out_directory)
+                if mlflow:
+                    for csv_path in csv_paths:
+                        mlflow.log_artifact(str(csv_path), "csv")
+
+            if not self.skip_draw_predictions:
+                file_name = result.predictions.file_name
+
+                draw_directory = out_directory / "draw"
+                draw_directory.mkdir(parents=True, exist_ok=True)
+
+                logger.info("Drawing predictions for file %s", file_name)
+                with open_pdf(file=pdf_path, filename=file_name) as doc:
+                    for page_index, page in enumerate(doc):
+                        scale_factor = result.cv_scale_factor[page_index]
+                        plot_prediction(result.predictions, page, draw_directory, scale_factor)
+
+                logger.info("Finished drawing predictions for file %s", file_name)
+
+        return callback
