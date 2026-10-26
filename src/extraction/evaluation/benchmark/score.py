@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
+from pydantic import ValidationError
 
 from core.benchmark_utils import BenchmarkSummary
 from core.ground_truth import GroundTruth
@@ -73,7 +73,12 @@ def evaluate_prediction(
 
         # Set GT language and aggregate metrics into a single entity
         metrics = FilePredictionsMetrics(
-            matched_with_gt.language, layer_metrics, depth_metrics, material_metrics, gw_metrics, metadata_metrics
+            language=matched_with_gt.language,
+            layer_metrics=layer_metrics,
+            depth_interval_metrics=depth_metrics,
+            material_description_metrics=material_metrics,
+            gw_metrics=gw_metrics,
+            metadata_metrics=metadata_metrics,
         )
 
     return FilePredictionsWithMetrics(
@@ -130,7 +135,6 @@ def evaluate_all_predictions(
             mlflow.log_artifact(Path(temp_directory) / "document_level_geology_metrics.csv")
 
     return ExtractionBenchmarkSummary(
-        ground_truth_path=str(ground_truth.path),
         n_documents=len(predictions.file_predictions_list),
         geology=geology_metrics_dict,
         metadata=metadata_metrics_dict,
@@ -143,19 +147,17 @@ def main():
 
     # Load the predictions
     try:
-        with open(args.predictions_path, encoding="utf8") as file:
-            predictions = json.load(file)
-        predictions = OverallFilePredictions.from_json(predictions)
+        predictions = OverallFilePredictions.model_validate_json(args.predictions_path.read_text())
     except FileNotFoundError:
         logger.error("Predictions file not found: %s", args.predictions_path)
         return
-    except json.JSONDecodeError as e:
+    except ValidationError as e:
         logger.error("Error decoding JSON from predictions file: %s", e)
         return
 
     # Load ground truth
     try:
-        ground_truth = GroundTruth(args.ground_truth_path)
+        ground_truth = GroundTruth.from_path(args.ground_truth_path)
     except FileNotFoundError:
         logger.error("Ground truth file not found: %s", args.ground_truth_path)
         return

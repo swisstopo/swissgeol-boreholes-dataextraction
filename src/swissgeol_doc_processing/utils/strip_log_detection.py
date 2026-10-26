@@ -334,10 +334,10 @@ def _score_pattern(im_gray: np.ndarray, pattern_params: dict) -> float:
 
     """
     hough_circles_params = pattern_params.get("hough_circles", {})
-    lsd_params = pattern_params.get("lsd", {})
+    fld_params = pattern_params.get("fld", {})
     _, width = im_gray.shape
 
-    bbox_lines = _detect_line(im_gray, lsd_params)
+    bbox_lines = _detect_line(im_gray, fld_params)
     bbox_circles = _detect_circle(im_gray, hough_circles_params)
     bboxes = bbox_lines + bbox_circles
 
@@ -356,38 +356,37 @@ def _score_pattern(im_gray: np.ndarray, pattern_params: dict) -> float:
     return np.clip(clusters_area / im_gray.size, a_min=0.0, a_max=1.0)
 
 
-def _detect_line(im_gray: np.ndarray, lsd_params: dict) -> list[pymupdf.Rect]:
-    """Detect straight line segments using OpenCV’s Line Segment Detector (LSD).
+def _detect_line(im_gray: np.ndarray, fld_params: dict) -> list[pymupdf.Rect]:
+    """Detect straight line segments using OpenCV’s Fast Line Detector (FLD).
 
     Internally crops a uniform margin from the image to avoid boundary artifacts,
-    runs LSD, and returns axis-aligned rectangles spanning each detected segment.
+    runs FLD, and returns axis-aligned rectangles spanning each detected segment.
 
     Args:
         im_gray (np.ndarray): Single-channel grayscale image (H×W).
-        lsd_params (dict): Parameters for LSD.
+        fld_params (dict): Parameters for FLD.
 
     Returns:
         list[pymupdf.Rect]: One rectangle per kept line.
     """
-    # Create default line segment detector
-    #  Documentation for the parameters can be found here:
-    #  https://docs.opencv.org/4.x/dd/d1a/group__imgproc__feature.html#gae0bba3b867a5f44d1b823aef4f57ee8d
-    local_lsd_params = lsd_params.copy()
-    min_line_ratio = local_lsd_params.pop("min_line_ratio")
-    max_line_ratio = local_lsd_params.pop("max_line_ratio")
-    max_margin = local_lsd_params.pop("max_margin")
+    local_fld_params = fld_params.copy()
+    min_line_ratio = local_fld_params.pop("min_line_ratio")
+    max_line_ratio = local_fld_params.pop("max_line_ratio")
+    max_margin = local_fld_params.pop("max_margin")
     _, width = im_gray.shape
 
     # Remove small margin around to prvent detecting table lines
     im_gray_margin = im_gray[max_margin:-max_margin, max_margin:-max_margin]
 
+    margin_height, margin_width = im_gray_margin.shape
     # Check if cropped area is still valid
-    if im_gray_margin.size == 0:
+    # FLD might throw an exception on very small inputs
+    if margin_height < 10 or margin_width < 10:
         return []
 
     # Detect lines in the image
-    lsd = cv2.createLineSegmentDetector(**local_lsd_params)
-    lines, _, _, _ = lsd.detect(im_gray_margin)
+    fld = cv2.ximgproc.createFastLineDetector(**local_fld_params)
+    lines = fld.detect(im_gray_margin)
 
     if lines is None:
         return []
@@ -395,7 +394,7 @@ def _detect_line(im_gray: np.ndarray, lsd_params: dict) -> list[pymupdf.Rect]:
     # Return lines that are in rang width * [min_line_length, max_line_ratio].
     return [
         pymupdf.Rect(x0, y0, x1, y1)
-        for x0, y0, x1, y1 in lines[:, 0, :]
+        for x0, y0, x1, y1 in lines
         if max_line_ratio * width > np.hypot(x1 - x0, y1 - y0) > min_line_ratio * width
     ]
 

@@ -1,6 +1,6 @@
 """Classes for evaluating the groundwater levels of a borehole."""
 
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 from core.benchmark_utils import Metrics
 from extraction.evaluation.utility import evaluate
@@ -8,48 +8,13 @@ from extraction.features.groundwater.groundwater_extraction import Groundwater
 from extraction.features.predictions.borehole_predictions import FileGroundwaterWithGroundTruth
 
 
-@dataclass
-class GroundwaterMetrics:
+class GroundwaterMetrics(BaseModel):
     """Class for storing the metrics of the groundwater information."""
 
-    filename: str
     groundwater_metrics: Metrics = Metrics()
     groundwater_depth_metrics: Metrics = Metrics()
     groundwater_elevation_metrics: Metrics = Metrics()
     groundwater_date_metrics: Metrics = Metrics()
-
-    def to_json(self) -> dict[str, dict]:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict[str, dict]: The object as a dictionary, with source filename, nested metric
-                sub-dictionaries for depth, elevation, and date.
-        """
-        return {
-            "metrics": self.groundwater_metrics.to_json(),
-            "depth_metrics": self.groundwater_depth_metrics.to_json(),
-            "elevation_metrics": self.groundwater_elevation_metrics.to_json(),
-            "date_metrics": self.groundwater_date_metrics.to_json(),
-        }
-
-    @classmethod
-    def from_json(cls, json: dict, filename: str) -> "GroundwaterMetrics":
-        """Construct a GroundwaterMetrics instance from a dictionary produced by `to_json`.
-
-        Args:
-            json (dict): Dictionary with groundwater metrics.
-            filename (str): Linked filename.
-
-        Returns:
-            GroundwaterMetrics: The reconstructed groundwater metrics object.
-        """
-        return GroundwaterMetrics(
-            filename=filename,
-            groundwater_metrics=Metrics.from_json(json["metrics"]),
-            groundwater_depth_metrics=Metrics.from_json(json["depth_metrics"]),
-            groundwater_elevation_metrics=Metrics.from_json(json["elevation_metrics"]),
-            groundwater_date_metrics=Metrics.from_json(json["date_metrics"]),
-        )
 
 
 class GroundwaterEvaluator:
@@ -86,7 +51,7 @@ class GroundwaterEvaluator:
             ]
 
             entries = (
-                [feature_on_page.feature for feature_on_page in borehole_data.groundwater.features]
+                [feature_on_page.feature for feature_on_page in borehole_data.groundwater]
                 if borehole_data.groundwater
                 else []
             )
@@ -117,7 +82,6 @@ class GroundwaterEvaluator:
             groundwater_depth_metrics=Metrics.micro_average(groundwater_depth_metrics_list),
             groundwater_elevation_metrics=Metrics.micro_average(groundwater_elevation_metrics_list),
             groundwater_date_metrics=Metrics.micro_average(groundwater_date_metrics_list),
-            filename=file_predictions.filename,
         )
 
     @staticmethod

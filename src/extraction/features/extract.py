@@ -2,10 +2,12 @@
 
 import logging
 import re
+import statistics
 
 import pymupdf
 
 from extraction.features.extracted_borehole import ExtractedBorehole
+from extraction.features.material_descriptions.find import MaterialDescriptionExtractor
 from extraction.features.stratigraphy.borehole_candidate import BoreholeCandidate
 from extraction.features.stratigraphy.depth_description_alignment import match_lines_to_interval
 from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
@@ -33,8 +35,7 @@ from extraction.features.stratigraphy.sidebar.extractor.protocol_sidebar_extract
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
-from swissgeol_doc_processing.geometry.line_detection import find_diags_ending_in_zone
-from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
+from swissgeol_doc_processing.geometry.line_detection import LineDetectionResult
 from swissgeol_doc_processing.text.find_description import get_description_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
 from swissgeol_doc_processing.text.textblock import (
@@ -45,7 +46,7 @@ from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_affinity import get_line_affinity
 from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
-from swissgeol_doc_processing.utils.strip_log_detection import StripLog
+from swissgeol_doc_processing.utils.strip_log_detection import StripLog, StripLogSection
 from swissgeol_doc_processing.utils.table_detection import TableStructure, middle_line
 
 logger = logging.getLogger(__name__)
@@ -57,8 +58,7 @@ class BoreholeExtractor:
     def __init__(
         self,
         lines: list[TextLine],
-        long_or_horizontal_lines: list[Line],
-        all_geometric_lines: list[Line],
+        line_detection_result: LineDetectionResult,
         table_structures: list[TableStructure],
         strip_logs: list[StripLog],
         language: str,
@@ -73,8 +73,7 @@ class BoreholeExtractor:
 
         Args:
             lines (list[TextLine]): all the text lines on the page.
-            long_or_horizontal_lines (list[Line]): Geometric lines (only the significant ones and the horizontals).
-            all_geometric_lines (list[Line]): All the geometric lines of the page (small ones included).
+            line_detection_result (LineDetectionResult): Results of the line detection algorithm.
             table_structures (list[TableStructure]): The identified table structures of the page.
             strip_logs (list[StripLog]): The identified strip logs of the page.
             language (str): The language of the page.
@@ -86,8 +85,8 @@ class BoreholeExtractor:
             **matching_params (dict): Additional parameters for the matching pipeline.
         """
         self.lines = lines
-        self.long_or_horizontal_lines = long_or_horizontal_lines
-        self.all_geometric_lines = all_geometric_lines
+        self.long_or_horizontal_lines = line_detection_result.long_or_horizontal_lines
+        self.all_geometric_lines = line_detection_result.all_geometric_lines
         self.table_structures = table_structures
         self.strip_logs = strip_logs  # added for future usage
         self.language = language
@@ -155,9 +154,9 @@ class BoreholeExtractor:
                     text=pair.block.text,
                     lines=[
                         FeatureOnPage(
-                            feature=MaterialDescriptionLine(text_line.text),
+                            feature=MaterialDescriptionLine(text=text_line.text),
                             rect=text_line.rect,
-                            page=text_line.page_number,
+                            page_number=text_line.page_number,
                         )
                         for text_line in pair.block.lines
                     ],
@@ -324,168 +323,19 @@ class BoreholeExtractor:
         Returns:
             list[pymupdf.Rect]: A list of candidate rectangles for material descriptions.
         """
-        if sidebar:
-            above_sidebar = [
-                line
-                for line in self.processed_lines
-                if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
-            ]
-
-            min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
-
-            def check_y0_condition(y0):
-                return y0 > min_y0 and y0 < sidebar.rect.y1
-        else:
-
-            def check_y0_condition(y0):
-                return True
-
         horizontal_text_lines = [
             line
             for line in self.processed_lines
             if abs(line.text_angle) < 10 and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
         ]
-        candidate_description = [line for line in horizontal_text_lines if check_y0_condition(line.rect.y0)]
-
-        is_not_description = [
-            line
-            for line in candidate_description
-            if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=True)
-        ]
-        is_description = [
-            line
-            for line in candidate_description
-            if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=False)
-            and line not in is_not_description
-        ]
-
-        if len(candidate_description) == 0:
-            return []
-
-        description_clusters: list[list[TextLine]] = []
-        while len(is_description) > 0:
-            # 0.4 instead of 0.5 slightly improves geoquat/validation/A76.pdf
-            coverage_by_generating_line = [
-                [other for other in is_description if x_overlap_significant_smallest(line.rect, other.rect, 0.4)]
-                for line in is_description
-            ]
-
-            def filter_coverage(coverage: list[TextLine]) -> list[TextLine]:
-                if coverage:
-                    min_x0 = min(line.rect.x0 for line in coverage)
-                    max_x1 = max(line.rect.x1 for line in coverage)
-                    x0_threshold = max_x1 - 0.4 * (max_x1 - min_x0)
-                    return [line for line in coverage if line.rect.x0 < x0_threshold]
-                else:
-                    return []
-
-            coverage_by_generating_line = [filter_coverage(coverage) for coverage in coverage_by_generating_line]
-            max_coverage = max(coverage_by_generating_line, key=len)
-            description_clusters.append(max_coverage)
-            is_description = [line for line in is_description if line not in max_coverage]
-
-        candidate_rects = []
-        sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
-
-        for cluster in description_clusters:
-            best_y0 = min([line.rect.y0 for line in cluster])
-            best_y1 = max([line.rect.y1 for line in cluster])
-
-            min_description_x0 = min([line.rect.x0 - 0.01 * line.rect.width for line in cluster])
-            max_description_x0 = max([line.rect.x0 + 0.2 * line.rect.width for line in cluster])
-            good_lines = [
-                line
-                for line in candidate_description
-                if line.rect.y0 >= best_y0 and line.rect.y1 <= best_y1
-                if min_description_x0 < line.rect.x0 < max_description_x0
-            ]
-            best_x0 = min([line.rect.x0 for line in good_lines])
-            best_x1 = max([line.rect.x1 for line in good_lines])
-
-            # check that no lines that have excluded words are contained in the rect
-            cluster_rect = pymupdf.Rect(best_x0, best_y0, best_x1, best_y1)
-            non_description_in_rect = [
-                excl_line
-                for excl_line in is_not_description
-                if x_overlap_significant_smallest(excl_line.rect, cluster_rect, 0.5)
-                and best_y0 < excl_line.rect.y0
-                and excl_line.rect.y1 < best_y1
-            ]
-
-            # the rect is valid only when description lines are clearly more numerous than non-description lines.
-            if len(non_description_in_rect) / len(good_lines) > self.matching_params["non_description_lines_ratio"]:
-                continue
-
-            # expand to include entire last block
-            def is_below(best_x0, best_y1, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
-                return (
-                    (line.rect.x0 > best_x0 - x_tolerance)
-                    and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
-                    and (line.rect.y0 < best_y1 + line_gap)
-                    and (line.rect.y1 > best_y1)
-                )
-
-            def is_above(best_x0, best_y0, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
-                return (
-                    (line.rect.x0 > best_x0 - x_tolerance)
-                    and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
-                    and (line.rect.y1 > best_y0 - line_gap)
-                    and (line.rect.y0 < best_y0)
-                )
-
-            continue_search = True
-            while continue_search:
-                line = next(
-                    (
-                        line
-                        for line in horizontal_text_lines
-                        if is_below(best_x0, best_y1, line) and len(line.text) > 1
-                    ),
-                    None,
-                )
-                if line:
-                    best_x0 = min(best_x0, line.rect.x0)
-                    best_x1 = max(best_x1, line.rect.x1)
-                    best_y1 = line.rect.y1
-                else:
-                    continue_search = False
-
-            # Expand upward one line at a time.
-            # With sidebar: stop at the topmost entry's y-level (avoids column headers above first depth entry).
-            # Without sidebar: stop when candidate has sibling lines outside the column (header row signal).
-            min_y0_limit = (
-                min(e.rect.y0 for e in sidebar.entries) + 5
-                if sidebar is not None and sidebar.entries
-                else -float("inf")
-            )
-            while best_y0 > min_y0_limit:
-                next_line = next(
-                    (
-                        desc_line
-                        for desc_line in sorted_above
-                        if is_above(best_x0, best_y0, desc_line)
-                        and len(desc_line.text) > 1
-                        and (
-                            sidebar is not None
-                            or not any(
-                                other
-                                for other in candidate_description
-                                if other is not desc_line
-                                and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
-                                and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)
-                            )
-                        )
-                    ),
-                    None,
-                )
-                if next_line is None:
-                    break
-                best_x0 = min(best_x0, next_line.rect.x0)
-                best_x1 = max(best_x1, next_line.rect.x1)
-                best_y0 = next_line.rect.y0
-
-            candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
-        return candidate_rects
+        extractor = MaterialDescriptionExtractor(
+            sidebar,
+            horizontal_text_lines=horizontal_text_lines,
+            language=self.language,
+            matching_params=self.matching_params,
+            analytics=self.analytics,
+        )
+        return extractor.find_candidates()
 
     def _find_borehole_candidate(self, sidebar: Sidebar | None) -> BoreholeCandidate | None:
         """Create a borehole candidate by finding the best material description column for a given depth column.
@@ -577,26 +427,52 @@ class BoreholeExtractor:
         Returns:
             list[Line]: The diagonal connectors.
         """
-        x0s = [line.rect.x0 for line in description_lines]
-        min_x0, max_x0 = min(x0s), max(x0s)
-        text_heights = [line.rect.height for line in description_lines]
-        min_text_height, max_text_height = min(text_heights), max(text_heights)
+        min_x0 = min([line.rect.x0 for line in description_lines])
+        median_text_height = statistics.median([line.rect.height for line in description_lines])
         min_y0 = min([line.rect.y0 for line in description_lines])
         max_y1 = max([line.rect.y1 for line in description_lines])
 
-        # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
-        search_zone = pymupdf.Rect(min_x0 - max_text_height, min_y0, max_x0 + max_text_height / 3, max_y1)
-        if self.strip_logs:
-            left_strip_x1s = [sl.bbox.x1 for sl in self.strip_logs if sl.bbox.x0 < search_zone.x0]
-            if left_strip_x1s:
-                # Shrink left boundary to the rightmost edge of intersecting strips
-                search_zone.x0 = max(search_zone.x0, max(left_strip_x1s))
+        start_min_x0 = min_x0 - 6 * median_text_height
 
-        # Detect and filter potential diagonals
-        diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
-        diagonals = self._filter_diagonals(
-            diagonals, description_lines, min_text_height / 2, max_text_height * 3, line_detection_params
-        )
+        # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
+        end_search_zone = pymupdf.Rect(min_x0 - median_text_height, min_y0, min_x0 + 3 * median_text_height, max_y1)
+
+        def strip_log_section_conflicts(strip_log_section: StripLogSection, line: Line) -> bool:
+            # check with individual strip log sections instead of the entire strip log bounding box, in order to be
+            # more accurate on skewed pages e.g. GeoQuat A359.pdf
+            relevant_strip_log = (
+                strip_log_section.bbox.y0 <= line.start.y <= strip_log_section.bbox.y1
+                and strip_log_section.bbox.x0 < line.end.x
+            )
+            # allow a small margin, so that diagonal can start on the right-hand edge of the strip log
+            return relevant_strip_log and line.start.x < strip_log_section.bbox.x1 - median_text_height / 4
+
+        # vertical and horizontal lines are likely noise
+        angle_threshold = line_detection_params["diagonals_params"]["angle_threshold"]
+        diagonals = [
+            g_line
+            for g_line in self.all_geometric_lines
+            if start_min_x0 <= g_line.start.x <= min_x0
+            and end_search_zone.contains(g_line.end.tuple)
+            and not any(
+                strip_log_section_conflicts(section, g_line)
+                for strip_log in self.strip_logs
+                for section in strip_log.sections
+            )
+            and not g_line.is_vertical(angle_threshold)
+            and not g_line.is_horizontal(angle_threshold)
+            and g_line.length > median_text_height / 2
+        ]
+
+        if len(diagonals):
+            # all diagonals are expected to have a similar width, outliers are thrown out
+            median_horizontal_width = statistics.median([diagonal.end.x - diagonal.start.x for diagonal in diagonals])
+            diagonals = [
+                diagonal
+                for diagonal in diagonals
+                if 0.5 * median_horizontal_width < diagonal.end.x - diagonal.start.x < median_horizontal_width * 1.5
+            ]
+
         return diagonals
 
     def _extract_borehole_without_sidebar(self) -> BoreholeCandidate | None:
@@ -606,13 +482,23 @@ class BoreholeExtractor:
             An optional BoreholeCandidate object, which will not have a sidebar.
         """
         # only allow sidebar=None fallback if strong evidence exists
-        if self._allow_description_only_fallback():
-            return self._find_borehole_candidate(sidebar=None)
-        else:
-            logger.debug(
-                "Page %s: skipping description-only fallback (insufficient evidence)",
-                self.page_number,
-            )
+        has_table = bool(self.table_structures)
+        has_striplog = bool(self.strip_logs)
+        if has_table or has_striplog:
+            borehole_candidate = self._find_borehole_candidate(sidebar=None)
+            if borehole_candidate and (
+                has_striplog
+                or any(
+                    table.bounding_rect.intersects(borehole_candidate.material_description_rect)
+                    for table in self.table_structures
+                )
+            ):
+                return borehole_candidate
+
+        logger.debug(
+            "Page %s: skipping description-only fallback (insufficient evidence)",
+            self.page_number,
+        )
         return None
 
     def _extract_filtered_borehole_candidates(self) -> list[BoreholeCandidate]:
@@ -635,28 +521,6 @@ class BoreholeExtractor:
 
         return filtered_candidates
 
-    @staticmethod
-    def _filter_diagonals(
-        g_lines: list[Line],
-        description_lines: list[TextLine],
-        min_vertical_dist: float,
-        max_horizontal_dist: float,
-        line_detection_params: dict,
-    ) -> list[Line]:
-        """Filters the diagonal lines identified."""
-        angle_threshold = line_detection_params["diagonals_params"]["angle_threshold"]
-        return [
-            g_line
-            for g_line in g_lines
-            if not (
-                any(line.rect.contains(g_line.start.tuple) for line in description_lines)
-                and any(line.rect.contains(g_line.end.tuple) for line in description_lines)
-            )  # lines on text are letters that have segments identified (like W)
-            and not g_line.is_vertical(angle_threshold)  # too many other lines are vertical
-            and min_vertical_dist < abs(g_line.end.y - g_line.start.y)  # near horizontals are likely noise
-            and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist  # lines too long are likely other parasites
-        ]
-
     def extract_sidebars_with_quality_metrics(self) -> SidebarQualityMetrics:
         """Extract all sidebars with quality metrics for classification purposes.
 
@@ -674,31 +538,6 @@ class BoreholeExtractor:
             number_of_good_sidebars=len(good_borehole_candidates),
             best_sidebar_score=best_candidate_score,
         )
-
-    def _allow_description_only_fallback(self) -> bool:
-        """Return True if we have strong evidence that a description-only borehole is plausible.
-
-        This is meant to reduce false-positive boreholes created from random paragraphs.
-        """
-        # Table evidence thresholds
-        min_table_height_ratio = self.matching_params.get("fallback_min_table_height_ratio", 0.85)
-
-        has_table = bool(self.table_structures)
-        has_striplog = bool(self.strip_logs)
-
-        # If strip-log exists, that's a borehole
-        if has_striplog:
-            return True
-
-        if not has_table:
-            return False
-
-        # For now, we require the table height to exceed a specific threshold in order to reduce false positives from
-        # small tables which might include keywords in their description, misleadingly classifying them as boreholes.
-        # BUT: TODO keep in mind that this might exclude some boreholes (e.g scanned image has large margin above and
-        # below the actual scanned page) --> this mechanism could/should be optimized in the future!
-        largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
-        return (largest_table.bounding_rect.height / max(self.page_height, 1e-16)) >= min_table_height_ratio
 
 
 def _split_text_lines_by_table_structures(

@@ -11,7 +11,6 @@ from extraction.runner import ExtractionBenchmarkRunner, ExtractionOptions, Extr
 from extraction.utils.benchmark_utils import CallbackFactory
 
 PREDICTION_FILE_ = "predictions.json"
-METADATA_FILE_ = "metadata.json"
 ANALYTICS_FILE_ = "matching_params_analytics.json"
 OVERALL_SUMMARY = "overall_summary.csv"
 
@@ -70,19 +69,16 @@ def test_start_pipeline_json(tmp_path: Path, borehole_pdf: Path) -> None:
         borehole_pdf (Path): Path to borehole PDF file.
     """
     predictions_path = tmp_path / PREDICTION_FILE_
-    metadata_path = tmp_path / METADATA_FILE_
 
     ExtractionPipelineRunner(
         predictions_path=predictions_path,
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        metadata_path=metadata_path,
     ).execute()
 
     # Check both output files exist
     assert predictions_path.exists()
-    assert metadata_path.exists()
 
     # Check that temporary files are cleaned
     assert len([f for f in predictions_path.parent.rglob("*.tmp")]) == 0
@@ -100,7 +96,6 @@ def test_start_pipeline_analytics(tmp_path: Path, borehole_pdf: Path) -> None:
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        metadata_path=tmp_path / METADATA_FILE_,
         options=ExtractionOptions(matching_analytics=True),
     ).execute()
     assert (tmp_path / ANALYTICS_FILE_).exists()
@@ -114,15 +109,18 @@ def test_start_pipeline_csv(tmp_path: Path, borehole_pdf: Path) -> None:
         borehole_pdf (Path): Path to borehole PDF file.
     """
     callback = CallbackFactory(
-        write_csv=True, skip_draw_predictions=True, draw_lines=False, draw_tables=False, draw_strip_logs=False
+        write_csv=True,
+        skip_draw_predictions=True,
+        draw_lines=False,
+        draw_tables=False,
+        draw_strip_logs=False,
     )
     ExtractionPipelineRunner(
         predictions_path=tmp_path / PREDICTION_FILE_,
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        metadata_path=tmp_path / METADATA_FILE_,
-        on_file_done=callback.on_file_done,
+        on_file_done=callback.on_file_done(tmp_path),
     ).execute()
     # Check generated csv files
     assert len([f for f in tmp_path.rglob("*.csv")]) != 0
@@ -136,15 +134,19 @@ def test_start_pipeline_drawing(tmp_path: Path, borehole_pdf: Path) -> None:
         borehole_pdf (Path): Path to borehole PDF file.
     """
     callback = CallbackFactory(
-        write_csv=False, skip_draw_predictions=False, draw_lines=True, draw_tables=True, draw_strip_logs=True
+        write_csv=False,
+        skip_draw_predictions=False,
+        draw_lines=True,
+        draw_tables=True,
+        draw_strip_logs=True,
     )
     ExtractionPipelineRunner(
         predictions_path=tmp_path / PREDICTION_FILE_,
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        metadata_path=tmp_path / METADATA_FILE_,
-        on_file_done=callback.on_file_done,
+        on_file_done=callback.on_file_done(tmp_path),
+        on_page_done=callback.on_page_done(tmp_path),
     ).execute()
 
     # Generated files
@@ -156,38 +158,6 @@ def test_start_pipeline_drawing(tmp_path: Path, borehole_pdf: Path) -> None:
     assert len(set(file_counts)) == 1
 
 
-def test_start_pipeline_part(tmp_path: Path, borehole_pdf: Path) -> None:
-    """Test that pipeline generation is tied to part.
-
-    Args:
-        tmp_path (Path): Path to temporary folder (pytest handled).
-        borehole_pdf (Path): Path to borehole PDF file.
-    """
-    predictions_path = tmp_path / PREDICTION_FILE_
-
-    def infer_part(part: str = "all") -> None:
-        """Inference of pipeline with part as parameter.
-
-        Args:
-            part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
-        """
-        ExtractionPipelineRunner(
-            predictions_path=predictions_path,
-            input_directory=borehole_pdf,
-            ground_truth_path=None,
-            out_directory=tmp_path,
-            metadata_path=tmp_path / METADATA_FILE_,
-            options=ExtractionOptions(part=part),
-        ).execute()
-
-    # Check inference of all vs not all
-    infer_part(part="metadata")
-    assert not predictions_path.exists()
-
-    infer_part(part="all")
-    assert predictions_path.exists()
-
-
 def test_start_pipeline_nested(tmp_path: Path, borehole_pdf: Path) -> None:
     """Test that pipeline resumes from temporary file and skips already processed files.
 
@@ -196,7 +166,6 @@ def test_start_pipeline_nested(tmp_path: Path, borehole_pdf: Path) -> None:
         borehole_pdf (Path): Path to borehole PDF file.
     """
     predictions_path = tmp_path / PREDICTION_FILE_
-    metadata_path = tmp_path / METADATA_FILE_
     predictions_path_tmp = tmp_path / (PREDICTION_FILE_ + ".tmp")
 
     # Run first time
@@ -206,7 +175,6 @@ def test_start_pipeline_nested(tmp_path: Path, borehole_pdf: Path) -> None:
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        metadata_path=metadata_path,
     ).execute()
 
     # Verify tmp exists
@@ -219,7 +187,6 @@ def test_start_pipeline_nested(tmp_path: Path, borehole_pdf: Path) -> None:
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        metadata_path=metadata_path,
     ).execute()
 
     # Verify tmp was removed
@@ -251,9 +218,8 @@ def test_start_pipeline_benchmark(tmp_path: Path, borehole_gt: Path, borehole_pd
     for spec in specs:
         # Check main folder
         assert (tmp_path / spec.name).exists()
-        # Check predictions and meta data
+        # Check predictions
         assert (tmp_path / spec.name / PREDICTION_FILE_).exists()
-        assert (tmp_path / spec.name / METADATA_FILE_).exists()
 
     # Check aggregation
     assert (tmp_path / OVERALL_SUMMARY).exists()

@@ -114,8 +114,8 @@ class LineAffinityCalculator:
         self.left_line_length_threshold = left_line_length_threshold
 
         self.material_description_rect = material_description_rect
-        horizontal_slope_tolerance = line_detection_params["line_merging_params"]["horizontal_slope_tolerance"]
-        horizontal_lines = [line for line in geometric_lines if line.is_horizontal(horizontal_slope_tolerance)]
+        angle_tolerance = line_detection_params["line_merging_params"]["angle_threshold"]
+        horizontal_lines = [line for line in geometric_lines if line.is_horizontal(angle_tolerance)]
 
         # spanning horizontals
         self.lines_spanning_description = [line for line in horizontal_lines if self._is_spanning_description(line)]

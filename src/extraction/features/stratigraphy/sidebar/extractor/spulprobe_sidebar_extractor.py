@@ -1,6 +1,7 @@
 """Module for the extraction of Sidebars coming from Sp. sampled entries."""
 
 import re
+from decimal import Decimal
 
 import pymupdf
 
@@ -38,7 +39,7 @@ class SpulprobeSidebarExtractor:
                 match = regex.match(first_word.text)
                 if not match:
                     continue
-                depths = [float(m.replace(",", ".")) for m in re.findall(cls.depths_pattern, line.text)]
+                depths = [Decimal(m.replace(",", ".")) for m in re.findall(cls.depths_pattern, line.text)]
                 entry_rect = line.rect
                 if not depths:
                     depths, line_rect = cls.search_depths_in_lines_on_the_right(line, lines)
@@ -53,7 +54,7 @@ class SpulprobeSidebarExtractor:
     @classmethod
     def search_depths_in_lines_on_the_right(
         cls, current_line: TextLine, lines: list[TextLine]
-    ) -> tuple[list[float], pymupdf.Rect | None]:
+    ) -> tuple[list[Decimal], pymupdf.Rect | None]:
         """Searches for depths in lines that are to the right of the line with the Sp. tag.
 
         Args:
@@ -61,7 +62,7 @@ class SpulprobeSidebarExtractor:
             lines (list[TextLine]): The list of lines to search in.
 
         Returns:
-            tuple[list[float], pymupdf.Rect | None] : A tuple containing a list of depths found and the rectangle of
+            tuple[list[Decimal], pymupdf.Rect | None] : A tuple containing a list of depths found and the rectangle of
                 the line where they were found.
         """
         for line in lines:
@@ -71,7 +72,7 @@ class SpulprobeSidebarExtractor:
                 continue
             if line.rect.x0 < current_line.rect.x1:
                 continue
-            return [float(m.replace(",", ".")) for m in re.findall(cls.depths_pattern, line.text)], line.rect
+            return [Decimal(m.replace(",", ".")) for m in re.findall(cls.depths_pattern, line.text)], line.rect
         return [], None
 
     @classmethod

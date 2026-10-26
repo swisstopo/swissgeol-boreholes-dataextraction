@@ -1,15 +1,32 @@
 """Classes for predictions per PDF file."""
 
-import dataclasses
+from pydantic import BaseModel, Field, model_serializer, model_validator
 
 from extraction.features.predictions.file_predictions import FilePredictionsWithMetrics
 
 
-@dataclasses.dataclass
-class OverallFilePredictions:
+class OverallFilePredictions(BaseModel):
     """A class to represent predictions for all files."""
 
-    file_predictions_list: list[FilePredictionsWithMetrics] = dataclasses.field(default_factory=list)
+    file_predictions_list: list[FilePredictionsWithMetrics] = Field(default_factory=list)
+
+    @model_serializer(mode="wrap")
+    def serialize_flat_json(self, handler) -> dict:
+        """Serialize as a dict with the filename as key (assumed ot be unique)."""
+        serialized_dict = handler(self)
+
+        return {entry.pop("filename"): entry for entry in serialized_dict["file_predictions_list"]}
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_flat_json(cls, data):
+        if isinstance(data, dict) and "file_predictions_list" not in data:
+            return {
+                "file_predictions_list": [
+                    {"filename": filename, **prediction} for filename, prediction in data.items()
+                ]
+            }
+        return data
 
     def contains(self, filename: str) -> bool:
         """Check if `file_predictions_list` contains `filename`.
@@ -29,41 +46,3 @@ class OverallFilePredictions:
             file_predictions (FilePredictionsWithMetrics): The file predictions to add.
         """
         self.file_predictions_list.append(file_predictions)
-
-    def get_metadata_as_dict(self) -> dict:
-        """Returns the metadata of the predictions as a dictionary.
-
-        Returns:
-            dict: The metadata of the predictions as a dictionary.
-        """
-        return {
-            "_".join([file_prediction.filename, str(borehole_prediction.borehole_index)]): {
-                "file_metadata": file_prediction.file_metadata.to_json(),
-                "borehole_metadata": borehole_prediction.metadata.to_json(),
-            }
-            for file_prediction in self.file_predictions_list
-            for borehole_prediction in file_prediction.boreholes
-        }
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary by merging individual file predictions.
-
-        Returns:
-            dict: A dictionary representation of the object.
-        """
-        return {fp.filename: fp.to_json() for fp in self.file_predictions_list}
-
-    @classmethod
-    def from_json(cls, prediction_from_file: dict) -> "OverallFilePredictions":
-        """Converts a dictionary to an object.
-
-        Args:
-            prediction_from_file (dict): A dictionary representing the predictions.
-
-        Returns:
-            OverallFilePredictions: The object.
-        """
-        overall_file_predictions = OverallFilePredictions()
-        for filename, file_data in prediction_from_file.items():
-            overall_file_predictions.add_file_predictions(FilePredictionsWithMetrics.from_json(file_data, filename))
-        return overall_file_predictions

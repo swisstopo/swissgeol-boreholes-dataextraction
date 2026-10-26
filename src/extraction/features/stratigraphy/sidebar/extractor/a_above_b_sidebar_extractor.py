@@ -1,6 +1,7 @@
 """Module for finding AAboveBSidebar instances in a borehole profile."""
 
 import statistics
+from decimal import Decimal
 
 import pymupdf
 
@@ -35,32 +36,28 @@ class AAboveBSidebarExtractor:
         return [entry for entry in entries if entry.value in selected_values]
 
     @staticmethod
-    def _arithmetic_progression_values(values: list[float]) -> set[float]:
+    def _arithmetic_progression_values(values: list[Decimal]) -> set[Decimal]:
         """Check if some of the values form an arithmetic progression."""
         if len(values) <= 2:
             return set()
 
-        integer_values = [int(round(value * 100)) for value in values]
-        differences = [integer_values[i + 1] - integer_values[i] for i in range(len(integer_values) - 1)]
+        differences = [values[i + 1] - values[i] for i in range(len(values) - 1)]
         step = statistics.mode(differences)
         if step <= 0:
             return set()
 
         # only consider arithmetic progressions that include 0 (when extended if necessary)
-        candidate_values = [value for value in integer_values if value % step == 0]
+        candidate_values = [value for value in values if value % step == 0]
 
-        values_set = set(integer_values)
+        values_set = set(values)
         matching_steps = [value + step in values_set for value in candidate_values].count(True)
         # For at least 70% of all values (except the highest one), the adding the step should give another present
         # value.
-        if matching_steps > 0.7 * (len(integer_values) - 1):
+        if matching_steps > 0.7 * (len(values) - 1):
             # return candidate values that are part of a segment of at least 3 consecutive values
             segments = [[value - step, value, value + step] for value in candidate_values]
             return {
-                value / 100
-                for segment in segments
-                if all(value in values_set for value in segment)
-                for value in segment
+                value for segment in segments if all(value in values_set for value in segment) for value in segment
             }
         else:
             return set()

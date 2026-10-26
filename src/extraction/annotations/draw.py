@@ -26,11 +26,7 @@ colors = ["purple", "blue"]
 logger = logging.getLogger(__name__)
 
 
-def plot_prediction(
-    prediction: FilePredictions,
-    doc: pymupdf.Document,
-    out_directory: Path,
-) -> None:
+def plot_prediction(prediction: FilePredictions, page: pymupdf.Page, out_directory: Path, scale_factor: float) -> None:
     """Draw predictions on pdf pages.
 
     Draws various recognized information on the pdf pages present at directory and saves
@@ -46,18 +42,14 @@ def plot_prediction(
 
     Args:
         prediction (FilePredictions): Prediction for file.
-        doc (pymupdf.Document): Path to the processed PDF file.
+        page (pymupdf.Page): PDF page to plot the predictions for.
         out_directory (Path): Path to the output directory where the images are saved.
+        scale_factor (float): The zoom to use for generating the image of the PDF page
     """
-    filename = prediction.file_name
-    logger.info("Drawing predictions for file %s", filename)
-    for _, page in enumerate(doc):
-        drawer = PageDrawer(page)
-        drawer.draw(prediction)
-        img = convert_page_to_img(page, scale_factor=2)
-        save_visualization(img, filename, page.number + 1, "outputs", out_directory)
-
-    logger.info("Finished drawing predictions for file %s", filename)
+    drawer = PageDrawer(page)
+    drawer.draw(prediction)
+    img = convert_page_to_img(page, scale_factor=scale_factor)
+    save_visualization(img, prediction.file_name, page.number + 1, "outputs", out_directory)
 
 
 class PageDrawer:
@@ -85,7 +77,7 @@ class PageDrawer:
             coordinates = borehole_predictions.metadata.coordinates
             elevation = borehole_predictions.metadata.elevation
             name = borehole_predictions.metadata.name
-            groundwaters = borehole_predictions.groundwater_in_borehole
+            groundwaters = borehole_predictions.groundwater
             bh_layers = borehole_predictions.layers
 
             if coordinates is not None and self.page_number == coordinates.page_number:
@@ -98,7 +90,7 @@ class PageDrawer:
                 self.draw_feature(elevation.rect * self.page.derotation_matrix, elevation.feature.is_correct, "blue")
             if name is not None and self.page_number == name.page_number:
                 self.draw_feature(name.rect * self.page.derotation_matrix, name.feature.is_correct, "yellow")
-            for groundwater_entry in groundwaters.features:
+            for groundwater_entry in groundwaters:
                 if self.page_number == groundwater_entry.page_number:
                     self.draw_feature(
                         groundwater_entry.rect * self.page.derotation_matrix,
@@ -124,7 +116,7 @@ class PageDrawer:
             for index, layer in enumerate(layers):
                 self.draw_layer(
                     layer=layer,
-                    sidebar_rects=[bboxes.sidebar_bbox.rect for bboxes in page_bboxes if bboxes.sidebar_bbox],
+                    sidebar_rects=[bboxes.sidebar_bbox for bboxes in page_bboxes if bboxes.sidebar_bbox is not None],
                     index=index,
                     page_number=self.page_number,
                 )
@@ -168,7 +160,7 @@ class PageDrawer:
             scale (int): Size of ticks / arrowheads.
             color (str): Color to draw. Defaults to "red".
         """
-        bbox_material = bounding_boxes.material_description_bbox.rect * self.page.derotation_matrix
+        bbox_material = bounding_boxes.material_description_bbox * self.page.derotation_matrix
         p_start = pymupdf.Point(bbox_material.x1 + shift, bbox_material.y0)
         p_end = pymupdf.Point(bbox_material.x1 + shift, bbox_material.y1)
 
@@ -200,19 +192,19 @@ class PageDrawer:
         """
         if bounding_boxes.sidebar_bbox:  # Draw rectangle for depth columns
             self.shape.draw_rect(
-                pymupdf.Rect(bounding_boxes.sidebar_bbox.rect) * self.page.derotation_matrix,
+                pymupdf.Rect(bounding_boxes.sidebar_bbox) * self.page.derotation_matrix,
             )
             self.shape.finish(color=pymupdf.utils.getColor("green"))
             for (
                 depth_column_entry
             ) in bounding_boxes.depth_column_entry_bboxes:  # Draw rectangle for depth column entries
                 self.shape.draw_rect(
-                    pymupdf.Rect(depth_column_entry.rect) * self.page.derotation_matrix,
+                    pymupdf.Rect(depth_column_entry) * self.page.derotation_matrix,
                 )
             self.shape.finish(color=pymupdf.utils.getColor("purple"))
 
         self.shape.draw_rect(  # Draw rectangle for material description column
-            bounding_boxes.material_description_bbox.rect * self.page.derotation_matrix,
+            bounding_boxes.material_description_bbox * self.page.derotation_matrix,
         )
         self.shape.finish(color=pymupdf.utils.getColor("red"))
 
@@ -357,13 +349,16 @@ class PageDrawer:
             )
 
 
-def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page_index: int) -> np.ndarray:
+def plot_tables(
+    page: pymupdf.Page, table_structures: list[TableStructure], page_index: int, scale_factor: float
+) -> np.ndarray:
     """Draw table structures on a pdf page.
 
     Args:
         page:               The PDF page.
         table_structures:   The identified table structures on the page.
         page_index:         The index of the page in the document (0-based).
+        scale_factor:       The zoom to use for generating the image of the PDF page
 
     Returns:
         np.ndarray: The plotted table.
@@ -376,7 +371,7 @@ def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page
     draw_table_structures(shape, temp_page.derotation_matrix, table_structures)
     shape.commit()
 
-    result = convert_page_to_img(temp_page, scale_factor=2)
+    result = convert_page_to_img(temp_page, scale_factor=scale_factor)
 
     temp_doc.close()
 
@@ -471,13 +466,16 @@ def draw_strip_logs(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, str
             )
 
 
-def plot_strip_logs(page: pymupdf.Page, strip_logs: list[StripLog], page_index: int) -> np.ndarray:
+def plot_strip_logs(
+    page: pymupdf.Page, strip_logs: list[StripLog], page_index: int, scale_factor: float
+) -> np.ndarray:
     """Draw strip log structures on a pdf page.
 
     Args:
         page: The PDF page.
         strip_logs: The identified strip log structures on the page.
         page_index: The index of the page in the document (0-based).
+        scale_factor: The zoom to use for generating the image of the PDF page
 
     Returns:
         np.ndarray: The plotted striplog.
@@ -490,7 +488,7 @@ def plot_strip_logs(page: pymupdf.Page, strip_logs: list[StripLog], page_index: 
     draw_strip_logs(shape, temp_page.derotation_matrix, strip_logs)
     shape.commit()
 
-    result = convert_page_to_img(temp_page, scale_factor=2)
+    result = convert_page_to_img(temp_page, scale_factor=scale_factor)
 
     temp_doc.close()
 

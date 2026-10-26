@@ -1,6 +1,5 @@
 """Script to populate material descriptions in a ground truth file from prediction output."""
 
-import json
 import logging
 from pathlib import Path
 
@@ -35,9 +34,8 @@ def generate(prediction: Path, ground_truth: Path) -> None:
         ground_truth (Path): Path to the ground truth JSON file to update.
     """
     new_ground_truth = ground_truth.parent / f"{ground_truth.stem}.new{ground_truth.suffix}"
-    with open(prediction, encoding="utf8") as f:
-        predictions = OverallFilePredictions.from_json(json.load(f))
-    gts = GroundTruth(ground_truth)
+    predictions = OverallFilePredictions.model_validate_json(prediction.read_text())
+    gts = GroundTruth.from_path(ground_truth)
 
     for file_prediction in predictions.file_predictions_list:
         gt_for_prediction = gts.for_file(file_prediction.filename)
@@ -65,8 +63,8 @@ def generate(prediction: Path, ground_truth: Path) -> None:
                 layer_gt.material_description = matched_layer[0].material_description.text
 
     # Write updated ground truth to file.
-    with open(new_ground_truth, "w", encoding="utf8") as f:
-        json.dump(gts.to_json(), f, indent=4)
+    with open(new_ground_truth, "w", encoding="utf8") as file:
+        file.write(gts.model_dump_json(indent=4, by_alias=True, exclude_none=True))
 
     logger.info("Done.")
 

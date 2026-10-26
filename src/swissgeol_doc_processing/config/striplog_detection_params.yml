@@ -53,14 +53,11 @@ score:
             max_radius: 8     # Maximum circle radius (px)
 
         # Line Segment Detector parameters
-        lsd:
-            scale: 1            # Image scale factor prior to detection (1 = original resolution)
-            sigma_scale: 0.6    # Gaussian sigma for image smoothing (relative to scale)
-            quant: 2.0          # Gradient quantization; lower = more sensitive, more segments
-            ang_th: 22.5        # Angle tolerance in degrees for region growing/merging
-            log_eps: 0.0        # -log10(eps) for NFA; larger (or smaller eps) = stricter validation
-            density_th: 0.7     # Minimum region point density for a valid segment (0–1)
-            n_bins: 1024        # Histogram bins for gradient angle quantization
+        fld:
+            length_threshold: 10
+            distance_threshold: 0.8
+            canny_th1: 100
+            canny_th2: 150
             max_line_ratio: 0.9 # Longest line segments to consider w.r.t. image width
             min_line_ratio: 0.1 # Shortest line segments to consider w.r.t. image width
             max_margin: 5       # Margin from image border to avoid table-line detections

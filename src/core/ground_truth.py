@@ -2,10 +2,13 @@
 
 import json
 import logging
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, TypeAdapter, model_serializer
+
+from swissgeol_doc_processing.utils.json import JsonFloatDecimal
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +53,8 @@ class GroundTruthLayerDepth(BaseModel):
     """Depth interval of a borehole layer."""
 
     model_config = {"extra": "forbid"}
-    end: float | None = None
-    start: float | None = None
+    end: JsonFloatDecimal | None = None
+    start: JsonFloatDecimal | None = None
 
 
 class GroundTruthLayer(BaseModel):
@@ -69,8 +72,8 @@ class GroundTruthGroundwater(BaseModel):
 
     model_config = {"extra": "forbid"}
     date: str | None = None
-    depth: float
-    elevation: float
+    depth: JsonFloatDecimal
+    elevation: JsonFloatDecimal
 
 
 class GroundTruthCoordinates(BaseModel):
@@ -78,8 +81,8 @@ class GroundTruthCoordinates(BaseModel):
 
     model_config = {"extra": "forbid"}
 
-    E: float
-    N: float
+    E: JsonFloatDecimal
+    N: JsonFloatDecimal
 
 
 class GroundTruthMetadata(BaseModel):
@@ -93,7 +96,7 @@ class GroundTruthMetadata(BaseModel):
     drilling_methods: list[str] | None = None
     original_name: str | None = None
     project_name: str | None = None
-    reference_elevation: float | None = None
+    reference_elevation: JsonFloatDecimal | None = None
     total_depth: float | None = None
 
 
@@ -107,25 +110,27 @@ class GroundTruthBorehole(BaseModel):
     metadata: GroundTruthMetadata
 
 
-class GroundTruth:
+class GroundTruth(BaseModel):
     """Ground truth data for the stratigraphy benchmark."""
 
-    def __init__(self, path: Path) -> None:
+    ground_truth: dict[str, list[GroundTruthBorehole]]
+
+    @classmethod
+    def from_path(cls, path: Path) -> "GroundTruth":
         """Instantiate the GroundTruth object.
 
         Args:
             path (Path): the path to the Ground truth file
         """
-        self.path = path
-        self.ground_truth: dict[str, list[GroundTruthBorehole]] = {}
-
         # Load the ground truth data
         with open(path, encoding="utf-8") as in_file:
-            ground_truth = json.load(in_file)
+            ground_truth = json.load(in_file, parse_float=Decimal)
 
         # Validate entries
+        ground_truth_dict: dict[str, list[GroundTruthBorehole]] = {}
         for filename, data in ground_truth.items():
-            self.ground_truth[filename] = TypeAdapter(list[GroundTruthBorehole]).validate_python(data)
+            ground_truth_dict[filename] = TypeAdapter(list[GroundTruthBorehole]).validate_python(data)
+        return cls(ground_truth=ground_truth_dict)
 
     def for_file(self, file_name: str) -> list[GroundTruthBorehole]:
         """Get the ground truth data for a given file.
@@ -142,13 +147,8 @@ class GroundTruth:
         logger.warning("No ground truth data found for %s.", file_name)
         return []
 
-    def to_json(self) -> dict[str, list[dict]]:
-        """Convert all ground truth boreholes to a JSON-serialisable dictionary.
-
-        Returns:
-            dict[str, list[dict]]: Mapping of file names to serialised borehole lists.
-        """
-        return {
-            filename: [borehole.model_dump() for borehole in boreholes]
-            for filename, boreholes in self.ground_truth.items()
-        }
+    @model_serializer(mode="wrap")
+    def serialize_flat_json(self, handler) -> dict:
+        """Serialize as a dict with the filename as key (assumed ot be unique)."""
+        default_serialized = handler(self)
+        return {filename: boreholes for filename, boreholes in default_serialized["ground_truth"].items()}

@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 import pymupdf
 
-from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
 from swissgeol_doc_processing.text.stemmer import find_matching_expressions
 
 
-class TextWord(RectWithPageMixin):
+@dataclass
+class TextWord:
     """Class to represent a word on a specific location on a PDF page.
 
     A TextWord object consists of a pymupdf Rectangle object and a string.
@@ -19,16 +20,16 @@ class TextWord(RectWithPageMixin):
     to represent the location of the word in a PDF document.
     """
 
-    def __init__(self, rect: pymupdf.Rect, text: str, page: int, color: int | None = None):
-        self.rect_with_page = RectWithPage(rect, page)
-        self.text = text
-        self.color = color
+    rect: pymupdf.Rect
+    text: str
+    page_number: int
+    color: int | None = None
 
     def __repr__(self) -> str:
         return f"TextWord({self.rect}, {self.text})"
 
 
-class TextLine(RectWithPageMixin):
+class TextLine:
     """Class to represent TextLine objects.
 
     A TextLine object is a collection of TextWord objects.
@@ -42,10 +43,8 @@ class TextLine(RectWithPageMixin):
             words (list[TextWord]): The words that make up the line.
             text_angle (float): The angle in degrees (between -180 and 180) that the text makes with the x-axis.
         """
-        rect = pymupdf.Rect()
-        for word in words:
-            rect.include_rect(word.rect)
-        self.rect_with_page = RectWithPage(rect, next((word.page_number for word in words), None))
+        self.rect = rect_union([word.rect for word in words])
+        self.page_number = next((word.page_number for word in words), None)
         self.words = words
         self.text_angle = text_angle
         self.is_indented = False
@@ -94,3 +93,20 @@ class TextLine(RectWithPageMixin):
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
             "page": self.page_number,
         }
+
+
+def rect_union(char_rects: list[pymupdf.Rect]) -> pymupdf.Rect:
+    """Takes the union of all the rects in the list.
+
+    Contrary to the pymupdf methods include_rect and |, this implementation also works well for zero-width or
+    zero-height rects.
+    """
+    if len(char_rects) == 0:
+        return pymupdf.Rect()
+    else:
+        return pymupdf.Rect(
+            min(rect.x0 for rect in char_rects),
+            min(rect.y0 for rect in char_rects),
+            max(rect.x1 for rect in char_rects),
+            max(rect.y1 for rect in char_rects),
+        )

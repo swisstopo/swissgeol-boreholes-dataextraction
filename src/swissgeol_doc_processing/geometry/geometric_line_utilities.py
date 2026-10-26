@@ -14,9 +14,7 @@ from swissgeol_doc_processing.geometry.linesquadtree import LinesQuadTree
 logger = logging.getLogger(__name__)
 
 
-def is_point_near_line(
-    line: Line, point: Point, segment_extension_tol: float = 10, perpendicular_tol: float = 3
-) -> bool:
+def is_point_near_line(line: Line, point: Point, segment_extension_tol: float, perpendicular_tol: float) -> bool:
     """Check if a point is near a line segment.
 
     This is done by computing the slope and y-intercept of the line, and checking whether the point satisfies
@@ -192,7 +190,7 @@ def _are_close(line1: Line, line2: Line, tol: float) -> bool:
         bool: True if the lines are close, False otherwise.
     """
     adaptive_tol = min(max(tol / 10, max(line1.length, line2.length)), tol)
-    line_tol = adaptive_tol / 3  # we are 3 times stricter in the direction perpendicular to the line
+    line_tol = adaptive_tol / 6  # we are 6 times stricter in the direction perpendicular to the line
     return (
         is_point_near_line(line1, line2.start, segment_extension_tol=adaptive_tol, perpendicular_tol=line_tol)
         or is_point_near_line(line1, line2.end, segment_extension_tol=adaptive_tol, perpendicular_tol=line_tol)

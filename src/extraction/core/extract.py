@@ -2,7 +2,7 @@
 
 import dataclasses
 import logging
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
@@ -22,8 +22,7 @@ from extraction.features.predictions.predictions import (
     resolve_boreholeless_pages,
 )
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
-from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
-from swissgeol_doc_processing.geometry.line_detection import extract_lines
+from swissgeol_doc_processing.geometry.line_detection import LineDetectionResult, extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
 from swissgeol_doc_processing.utils.file_utils import read_params
@@ -43,8 +42,9 @@ logger = logging.getLogger(__name__)
 class PageExtractionData:
     """Intermediate per-page detection data, needed for optional visualization."""
 
+    file_name: str
     page_index: int
-    lines: list[Line]
+    line_detection_result: LineDetectionResult
     table_structures: list[TableStructure]
     strip_logs: list[StripLog]
 
@@ -54,7 +54,7 @@ class ExtractionResult:
     """Full output of extract(): predictions and per-page data needed for visualization."""
 
     predictions: FilePredictions
-    pages_data: list[PageExtractionData]
+    cv_scale_factor: list[float]
 
 
 @contextmanager
@@ -86,8 +86,8 @@ def open_pdf(
 def extract(
     file: Path | BytesIO,
     filename: str,
-    part: str = "all",
     analytics: MatchingParamsAnalytics | None = None,
+    on_page_done: Callable[[pymupdf.Page, PageExtractionData], None] | None = None,
 ) -> ExtractionResult:
     """Extract pipeline for input file.
 
@@ -97,8 +97,9 @@ def extract(
     Args:
         file (Path | BytesIO): Path or stream of file to process.
         filename (str): Name of the file used as identifier.
-        part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
         analytics (MatchingParamsAnalytics): Analytics object for tracking matching parameters. Defaults to None.
+        on_page_done (Callable[[pymupdf.Page, PageExtractionData], None] | None):
+            Callback for visualizations to be produced after every page.
 
     Returns:
         ExtractionResult: Predictions and per-page detection data for the input file.
@@ -115,10 +116,7 @@ def extract(
         # Save the predictions to the overall predictions object, initialize common variables
         boreholes_per_page = []
         boreholeless_pages = []
-        pages_data = []
-
-        if part != "all":
-            return ExtractionResult(predictions=FilePredictions([], file_metadata, filename), pages_data=[])
+        cv_scale_factors = []
 
         # Extract the Flayers
         for page_index, page in enumerate(doc):
@@ -126,14 +124,18 @@ def extract(
             logger.info(f"Processing page {page_number}")
 
             text_lines = extract_text_lines(page)
-            long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
+            line_detection_result = extract_lines(page, text_lines, line_detection_params)
             name_entries = extract_borehole_names(text_lines, name_detection_params)
             elevation_entries = [e for e in metadata.elevations if e.page_number == page_number]
             coordinate_entries = [c for c in metadata.coordinates if c.page_number == page_number]
 
             # Detect table structures on the page
             table_structures = detect_table_structures(
-                page.rect.width, page.rect.height, long_or_horizontal_lines, text_lines, table_detection_params
+                page.rect.width,
+                page.rect.height,
+                line_detection_result.long_or_horizontal_lines,
+                text_lines,
+                table_detection_params,
             )
 
             # Detect strip logs on the page
@@ -142,8 +144,7 @@ def extract(
             # Extract the stratigraphy
             extracted_boreholes = BoreholeExtractor(
                 text_lines,
-                long_or_horizontal_lines,
-                all_geometric_lines,
+                line_detection_result,
                 table_structures,
                 strip_logs,
                 file_metadata.language,
@@ -161,7 +162,7 @@ def extract(
             groundwater_entries = groundwater_extractor.extract_groundwater(
                 page_number=page_number,
                 text_lines=text_lines,
-                geometric_lines=long_or_horizontal_lines,
+                geometric_lines=line_detection_result.long_or_horizontal_lines,
                 extracted_boreholes=extracted_boreholes,
             )
 
@@ -180,15 +181,18 @@ def extract(
                 # attach it to an adjacent page's borehole once all pages have been processed.
                 boreholeless_pages.append(page_metadata)
 
-            # Store per-page intermediate data for optional downstream visualization
-            pages_data.append(
-                PageExtractionData(
-                    page_index=page_index,
-                    lines=all_geometric_lines,
-                    table_structures=table_structures,
-                    strip_logs=strip_logs,
-                )
+            page_data = PageExtractionData(
+                file_name=filename,
+                page_index=page_index,
+                line_detection_result=line_detection_result,
+                table_structures=table_structures,
+                strip_logs=strip_logs,
             )
+            if on_page_done is not None:
+                on_page_done(page, page_data)
+
+            # Store per-page intermediate data for optional downstream visualization
+            cv_scale_factors.append(line_detection_result.cv_scale_factor)
 
         resolve_boreholeless_pages(boreholes_per_page, boreholeless_pages)
 
@@ -202,6 +206,8 @@ def extract(
         borehole_predictions_list: list[BoreholePredictions] = build_borehole_predictions(merged_boreholes)
 
         return ExtractionResult(
-            predictions=FilePredictions(borehole_predictions_list, file_metadata, filename),
-            pages_data=pages_data,
+            predictions=FilePredictions(
+                borehole_predictions_list=borehole_predictions_list, file_metadata=file_metadata, file_name=filename
+            ),
+            cv_scale_factor=cv_scale_factors,
         )
