@@ -103,7 +103,7 @@ def test_load_pdf_from_aws(upload_test_pdf):
 def test_extract_coordinate_fail(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with a valid request."""
     request = get_default_small_coordinate_request()
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 404
     json_response = response.json()
     assert "detail" in json_response
@@ -131,7 +131,7 @@ def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_t
         bbox=BoundingBox(x0=0, y0=0, x1=1020, y1=1000),
         format=FormatTypes.TEXT,
     )
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
@@ -142,7 +142,7 @@ def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_t
     ####################################################################################################
     target_text = "OUVRAGE EMPLACEMENT Le Mégaror Lancy ENTREPRISE ISR Injectobohr SA"
     request = get_text_request_on_rotated_pdf()
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
@@ -162,7 +162,7 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
         bbox=BoundingBox(x0=311, y0=269, x1=821, y1=704),  # pixels
         format=FormatTypes.TEXT,
     )
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
@@ -180,7 +180,7 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
         bbox=BoundingBox(x0=311, y0=299, x1=813, y1=704),  # pixels
         format=FormatTypes.TEXT,
     )
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
@@ -198,7 +198,7 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
         bbox=BoundingBox(x0=311, y0=269, x1=611, y1=336),  # pixels
         format=FormatTypes.TEXT,
     )
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
@@ -216,7 +216,7 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
         bbox=BoundingBox(x0=1848, y0=242, x1=2145, y1=303),  # pixels
         format=FormatTypes.TEXT,
     )
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
@@ -231,7 +231,7 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
         bbox=BoundingBox(x0=315, y0=281, x1=371, y1=330),  # pixels
         format=FormatTypes.TEXT,
     )
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 404
 
     target_text = "Lorem"
@@ -242,7 +242,7 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
         bbox=BoundingBox(x0=315, y0=300, x1=440, y1=330),  # pixels
         format=FormatTypes.TEXT,
     )
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
@@ -257,7 +257,7 @@ def test_extract_text_empty(test_client: TestClient, upload_test_pdf, upload_tes
         bbox=BoundingBox(x0=0, y0=0, x1=100, y1=100),
         format=FormatTypes.TEXT,
     )
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 404
     json_response = response.json()
     assert "detail" in json_response
@@ -270,7 +270,7 @@ def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, up
     ### Extract Data on Normal PDF with LV03 coordinates
     ####################################################################################################
     request = get_default_coordinate_request()
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
@@ -288,7 +288,7 @@ def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, up
         bbox=BoundingBox(x0=1625, y0=900, x1=2819, y1=968),  # pixels
         format=FormatTypes.COORDINATES,
     )
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
@@ -306,7 +306,7 @@ def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, up
         bbox=BoundingBox(x0=1625, y0=1000, x1=2819, y1=1068),  # pixels
         format=FormatTypes.COORDINATES,
     )
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
@@ -369,7 +369,7 @@ def test_number_extraction(test_client: TestClient, upload_test_pdf, upload_test
     request = get_default_coordinate_request()
     request.format = FormatTypes.NUMBER
 
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
@@ -383,7 +383,7 @@ def test_number_extraction(test_client: TestClient, upload_test_pdf, upload_test
     request.format = FormatTypes.NUMBER
     request.bbox = BoundingBox(x0=0, y0=0, x1=300, y1=300)
 
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
@@ -401,7 +401,7 @@ def test_number_extraction_failure(test_client: TestClient, upload_test_pdf, upl
         format=FormatTypes.NUMBER,
     )
 
-    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump(mode="json"))
     assert response.status_code == 400
     json_response = response.json()
     assert "detail" in json_response

@@ -139,7 +139,7 @@ def test_post_classify_returns_503_when_bert_models_not_loaded(test_client: Test
     app.state.bert_models = None
 
     request = ClassifyRequest(description=CONSOLIDATED_DESCRIPTION)
-    response = test_client.post("/api/V1/classify", content=request.model_dump_json())
+    response = test_client.post("/api/V1/classify", json=request.model_dump(mode="json"))
 
     assert response.status_code == 503
     assert "BERT_ENABLED" in response.json()["detail"]
@@ -152,7 +152,7 @@ def test_post_classify_returns_predictions_when_bert_models_loaded(
     app.state.bert_models = real_bert_models
 
     request = ClassifyRequest(description=CONSOLIDATED_DESCRIPTION)
-    response = test_client.post("/api/V1/classify", content=request.model_dump_json())
+    response = test_client.post("/api/V1/classify", json=request.model_dump(mode="json"))
 
     assert response.status_code == 200
     body = response.json()
@@ -172,7 +172,7 @@ def test_post_classify_omits_field_that_ran_but_predicted_not_specified(
     app.state.bert_models = real_bert_models
 
     request = ClassifyRequest(description=CONSOLIDATED_NOT_SPECIFIED_DESCRIPTION)
-    response = test_client.post("/api/V1/classify", content=request.model_dump_json())
+    response = test_client.post("/api/V1/classify", json=request.model_dump(mode="json"))
 
     assert response.status_code == 200
     body = response.json()
