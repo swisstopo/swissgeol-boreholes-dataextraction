@@ -9,7 +9,7 @@ To launch the API and access its endpoints, follow these steps:
 
 1. **Install dependencies**
 
-Ensure you have all the dependencies installed that are required for running the API. Using uv, this can be done by running 
+Install the dependencies required for the API using either uv command below, then activate the virtual environment with `source .venv/bin/activate` before continuing to the remaining steps.
 ```bash
 uv sync --extra api --extra deep-learning-cpu
 ```
