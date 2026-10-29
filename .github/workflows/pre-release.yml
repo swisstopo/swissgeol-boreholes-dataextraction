@@ -87,7 +87,7 @@ jobs:
   publish-package:
     runs-on: ubuntu-latest
     name: Build and publish Python package pre-release
-    needs: tag-release-candidate
+    needs: [tag-release-candidate, tag_rc_commit]
 
     steps:
       - name: Checkout repository
@@ -95,6 +95,7 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+          ref: v${{ needs.tag-release-candidate.outputs.version }}
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v8.1.0
@@ -103,6 +104,7 @@ jobs:
 
       - name: Build package
         run: |
+          export VERSIONINGIT_PRETEND_VERSION=${{ needs.tag-release-candidate.outputs.version }}
           uv build
 
       - name: List built packages

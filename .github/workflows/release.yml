@@ -81,6 +81,7 @@ jobs:
 
       - name: Build package
         run: |
+          export VERSIONINGIT_PRETEND_VERSION=${{ env.VERSION }}
           uv build
 
       - name: List built packages
