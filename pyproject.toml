@@ -68,13 +68,14 @@ devtools = [
     "tqdm==4.67.1",
     "pyinstrument==5.1.1",
 ]
+# Use deep-learning for GPU training, deep-learning-cpu for Docker / CPU-only inference (will use different sources
+# as configured below).
 deep-learning = [
     "transformers==4.55.2",
     "datasets==4.0.0",
     "torch==2.8.0",
     "accelerate==1.10.0",
 ]
-
 deep-learning-cpu = [
     "transformers==4.55.2",
     "datasets==4.0.0",
