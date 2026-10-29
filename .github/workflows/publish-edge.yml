@@ -42,7 +42,7 @@ jobs:
       - name: Find next version
         id: find_version
         if: ${{ github.event.inputs.version == '' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           EDGE_TAGS: ${{ steps.get_edge_tags.outputs.edge_tags }}
         with:

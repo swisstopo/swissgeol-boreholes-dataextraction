@@ -14,7 +14,7 @@ COPY pyproject.toml README.md uv.lock /app/
 # --no-dev: exclude development dependencies
 # --no-install-project: skip building and installing the project package itself
 # --compile: generate *.pyc files to lower memory load at startup
-RUN uv sync --no-dev --no-install-project --compile --extra deep-learning-cpu
+RUN uv sync --no-dev --no-install-project --compile --extra deep-learning-cpu --extra api
 
 
 ## ------ Runtime stage

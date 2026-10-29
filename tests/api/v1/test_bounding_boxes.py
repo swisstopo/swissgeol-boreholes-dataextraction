@@ -32,7 +32,7 @@ def upload_test_png(s3_client, test_bucket_name):
 def test_bounding_boxes_success(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test successful retrieval of bounding boxes."""
     request = BoundingBoxesRequest(filename=TEST_PDF_KEY, page_number=1)
-    response = test_client.post("/api/V1/bounding_boxes", content=request.model_dump_json())
+    response = test_client.post("/api/V1/bounding_boxes", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
     assert "bounding_boxes" in json_response
@@ -46,7 +46,7 @@ def test_bounding_boxes_success(test_client: TestClient, upload_test_pdf, upload
 def test_bounding_boxes_nonexistent_pdf(test_client: TestClient):
     """Test request with nonexistent PDF file."""
     request = BoundingBoxesRequest(filename="nonexistent.pdf", page_number=1)
-    response = test_client.post("/api/V1/bounding_boxes", content=request.model_dump_json())
+    response = test_client.post("/api/V1/bounding_boxes", json=request.model_dump(mode="json"))
     assert response.status_code == 404
     assert response.json() == {"detail": "Document nonexistent.pdf not found in S3 bucket."}
 
@@ -54,7 +54,7 @@ def test_bounding_boxes_nonexistent_pdf(test_client: TestClient):
 def test_bounding_boxes_invalid_page(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test request with invalid page number."""
     request = BoundingBoxesRequest(filename=TEST_PDF_KEY, page_number=999)  # Non-existent page
-    response = test_client.post("/api/V1/bounding_boxes", content=request.model_dump_json())
+    response = test_client.post("/api/V1/bounding_boxes", json=request.model_dump(mode="json"))
     assert response.status_code == 400
     assert response.json() == {"detail": "page not in document"}
 
@@ -63,6 +63,6 @@ def test_bounding_boxes_invalid_filename(test_client: TestClient):
     """Test request with invalid filename."""
     # Test with non-PDF file
     request = BoundingBoxesRequest(filename="test.txt", page_number=1)
-    response = test_client.post("/api/V1/bounding_boxes", content=request.model_dump_json())
+    response = test_client.post("/api/V1/bounding_boxes", json=request.model_dump(mode="json"))
     assert response.status_code == 400
     assert response.json() == {"detail": "Invalid request. The filename must end with '.pdf'."}

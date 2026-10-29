@@ -13,15 +13,11 @@ dependencies = [
     "pandas==2.3.1",
     "levenshtein==0.27.1",
     "python-dotenv==1.1.1",
-    "fastapi==0.116.1",
-    "python-multipart==0.0.32",
-    "uvicorn==0.35.0",
     "pydantic_settings==2.10.1",
     "pydantic==2.11.7",
     "httpx==0.28.1",
-    "pillow==11.3.0",
+    "pillow==13.0.0",
     "mangum==0.19.0",
-    "awslambdaric==3.1.1",
     "scikit-learn==1.7.1",
     "scikit-image==0.25.2",
     "click==8.2.1",
@@ -32,7 +28,7 @@ dependencies = [
     "opencv-contrib-python-headless==5.0.0.93",
     "fastquadtree==2.0.2",
     "numpy==2.2.6",
-    "nltk==3.9.1",
+    "nltk==3.10.4",
     "rdflib==7.1.4",
     "compound_split==1.0.2",
     "fast-langdetect==1.0.0",
@@ -41,6 +37,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+api = [
+    "python-multipart==0.0.32",
+    "fastapi==0.159.0",
+    "uvicorn==0.54.0"
+]
 test = [
     "pytest==8.4.1",
     "pytest-cov==6.2.1",
@@ -67,22 +68,20 @@ devtools = [
     "tqdm==4.67.1",
     "pyinstrument==5.1.1",
 ]
+# Use deep-learning for GPU training, deep-learning-cpu for Docker / CPU-only inference (will use different sources
+# as configured below).
 deep-learning = [
     "transformers==4.55.2",
     "datasets==4.0.0",
     "torch==2.8.0",
     "accelerate==1.10.0",
 ]
-
 deep-learning-cpu = [
     "transformers==4.55.2",
     "datasets==4.0.0",
     "torch==2.8.0",
     "accelerate==1.10.0",
 ]
-
-# Use deep-learning for GPU training, deep-learning-cpu for Docker / CPU-only inference.
-all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools, deep-learning]"]
 
 # ---- Configuration for package building
 [tool.hatch.version]

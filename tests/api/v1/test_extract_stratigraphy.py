@@ -32,7 +32,7 @@ def upload_test_png(s3_client, upload_test_pdf, test_bucket_name):
 def test_extract_stratigraphy_success(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test successful extraction of stratigraphy."""
     request = ExtractStratigraphyRequest(filename=TEST_PDF_KEY)
-    response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_stratigraphy", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
 
@@ -56,7 +56,7 @@ def test_extract_stratigraphy_success(test_client: TestClient, upload_test_pdf, 
 def test_extract_stratigraphy_nonexistent_pdf(test_client: TestClient):
     """Test request with nonexistent PDF file."""
     request = ExtractStratigraphyRequest(filename="nonexistent.pdf")
-    response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_stratigraphy", json=request.model_dump(mode="json"))
     assert response.status_code == 404
     assert response.json() == {"detail": "Document nonexistent.pdf not found in S3 bucket."}
 
@@ -64,7 +64,7 @@ def test_extract_stratigraphy_nonexistent_pdf(test_client: TestClient):
 def test_extract_stratigraphy_nonexistent_png(test_client: TestClient, upload_test_pdf):
     """Test request with nonexistent PNG file."""
     request = ExtractStratigraphyRequest(filename=TEST_PDF_KEY)
-    response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_stratigraphy", json=request.model_dump(mode="json"))
     assert response.status_code == 404
     assert response.json() == {
         "detail": (
@@ -78,7 +78,7 @@ def test_extract_stratigraphy_invalid_filename(test_client: TestClient):
     """Test request with invalid filename."""
     # Test with non-PDF file
     request = ExtractStratigraphyRequest(filename="test.txt")
-    response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_stratigraphy", json=request.model_dump(mode="json"))
     assert response.status_code == 400
     assert response.json() == {"detail": "Invalid request. The filename must end with '.pdf'."}
 
@@ -86,7 +86,7 @@ def test_extract_stratigraphy_invalid_filename(test_client: TestClient):
 def test_extract_stratigraphy_default_no_groundwater(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test that default behavior does NOT include groundwater."""
     request = ExtractStratigraphyRequest(filename=TEST_PDF_KEY)
-    response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_stratigraphy", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
 
@@ -102,7 +102,7 @@ def test_extract_stratigraphy_default_no_groundwater(test_client: TestClient, up
 def test_extract_stratigraphy_explicit_false(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test that include_groundwater=False does not include groundwater."""
     request = ExtractStratigraphyRequest(filename=TEST_PDF_KEY, include_groundwater=False)
-    response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_stratigraphy", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
 
@@ -115,7 +115,7 @@ def test_extract_stratigraphy_explicit_false(test_client: TestClient, upload_tes
 def test_extract_stratigraphy_with_groundwater(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test that include_groundwater=True includes groundwater data per borehole."""
     request = ExtractStratigraphyRequest(filename=TEST_PDF_KEY, include_groundwater=True)
-    response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_stratigraphy", json=request.model_dump(mode="json"))
     assert response.status_code == 200
     json_response = response.json()
 
@@ -151,6 +151,6 @@ def test_extract_stratigraphy_with_groundwater(test_client: TestClient, upload_t
 def test_extract_stratigraphy_with_groundwater_missing_png(test_client: TestClient, upload_test_pdf):
     """Test that include_groundwater=True fails gracefully when PNG missing."""
     request = ExtractStratigraphyRequest(filename=TEST_PDF_KEY, include_groundwater=True)
-    response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
+    response = test_client.post("/api/V1/extract_stratigraphy", json=request.model_dump(mode="json"))
     assert response.status_code == 404
     assert "PNG file" in response.json()["detail"]

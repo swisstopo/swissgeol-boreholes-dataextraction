@@ -7,12 +7,17 @@ The API for this project is built using FastAPI, a modern, fast (high-performanc
 
 To launch the API and access its endpoints, follow these steps:
 
-1. **Activate the virtual environment**
+1. **Install dependencies**
 
-Activate your virtual environment. On Unix systems, this can be done with the following command:
+Install the dependencies required for the API using either uv command below, then activate the virtual environment with `source .venv/bin/activate` before continuing to the remaining steps.
+```bash
+uv sync --extra api --extra deep-learning-cpu
+```
+
+or
 
 ```bash
-source .venv/bin/activate
+uv sync --all-extras
 ```
 
 <a name="env"></a>
