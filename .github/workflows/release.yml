@@ -65,6 +65,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TAG_NAME }}
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Set environment variables
         run: |
@@ -73,11 +77,11 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v8.1.0
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Build package
         run: |
-          export SETUPTOOLS_SCM_PRETEND_VERSION=${{ env.VERSION }}
+          export VERSIONINGIT_PRETEND_VERSION=${{ env.VERSION }}
           uv build
 
       - name: List built packages
