@@ -66,6 +66,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          ref: ${{ env.TAG_NAME }}
           fetch-depth: 0
           fetch-tags: true
 
