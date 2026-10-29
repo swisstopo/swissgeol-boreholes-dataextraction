@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies and run tests
         shell: bash
         run: |
-          uv sync --extra test
+          uv sync --extra test --extra api
           uv run pytest \
             --junitxml=pytest.xml \
             --cov-report=term-missing:skip-covered \
