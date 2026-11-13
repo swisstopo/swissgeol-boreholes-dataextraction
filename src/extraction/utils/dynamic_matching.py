@@ -175,8 +175,8 @@ class IntervalToLinesDP(DP):
         ]
 
 
-class PredToGroundTruthLayerDP(DP):
-    """Dynamic programming matcher for predicted layers to ground truth layers matching."""
+class OrderedMatchingDP(DP):
+    """Match two ordered sequences one to one, allowing elements on either side to be skipped."""
 
     def _build_dp_table(self, pair_score: list[list[float]]) -> tuple[list[list[float]], list[list[str]]]:
         """Build the dynamic programming table for layer matching.
@@ -241,3 +241,7 @@ class PredToGroundTruthLayerDP(DP):
         mapping.reverse()
 
         return [(self.left[left_idx], self.right[right_idx]) for left_idx, right_idx in mapping]
+
+
+class PredToGroundTruthLayerDP(OrderedMatchingDP):
+    """Dynamic programming matcher for predicted layers to ground truth layers matching."""

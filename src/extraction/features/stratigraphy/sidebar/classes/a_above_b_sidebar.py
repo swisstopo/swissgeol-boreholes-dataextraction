@@ -14,6 +14,7 @@ import numpy as np
 from extraction.features.stratigraphy.interval.interval import IntervalZone
 from extraction.features.stratigraphy.sidebar.classes.depth_column_entry_sidebar import DepthColumEntrySidebar
 from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
+from extraction.utils.dynamic_matching import OrderedMatchingDP
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.text.textline import TextLine
 
@@ -204,29 +205,37 @@ class AAboveBSidebar(DepthColumEntrySidebar):
         """Compute the vertical shift for each sidebar entry based on the diagonal lines.
 
         The shift indicates how much higher or lower the entry should be matched compared to its current position.
-        To avoid mismatches, we only consider the closest diagonal line to each entry, and stop the process
-        when the distance between the entry and the diagonal is too large compared to the average entry height.
+        Match entries and diagonal starts in vertical order so that a locally closer label does not steal a
+        connector from an earlier entry. Missing entries or connectors may be skipped. A connector must start
+        within one average label height of the label's rectangle; labels often sit above the layer boundary.
 
         Note: this function modifies the attribute 'relative_shift' of each sidebar entry in place.
 
         Args:
-            diagonals (list[Line]): The diagonal lines.
+            diagonals (list[Line]): The diagonal lines, already merged by the line detector.
         """
-        avg_entries_height = sum([entry.rect.height for entry in self.entries]) / len(self.entries)
-        seen_diags = []
-        seen_entries = []
-        while len(seen_diags) != len(diagonals) and len(seen_entries) != len(self.entries):
-            unseen_diags = [diag for diag in diagonals if diag not in seen_diags]
-            unseen_entries = [entry for entry in self.entries if entry not in seen_entries]
-            closest_entry, closest_diag = min(
-                [(entry, diag) for entry in unseen_entries for diag in unseen_diags],
-                key=lambda pair: abs((pair[0].rect.y0 + pair[0].rect.y1) / 2 - pair[1].start.y),
-            )
-            if abs((closest_entry.rect.y0 + closest_entry.rect.y1) / 2 - closest_diag.start.y) > avg_entries_height:
-                break  # remaining pairs are likely wrong, due to undetected entry or duplicated diagonal detection
-            closest_entry.relative_shift = float(closest_diag.end.y - closest_diag.start.y)
-            seen_diags.append(closest_diag)
-            seen_entries.append(closest_entry)  # different post processing is needed depending on sidebar type
+        if not self.entries or not diagonals:
+            return
+        avg_entries_height = sum(entry.rect.height for entry in self.entries) / len(self.entries)
+        if avg_entries_height <= 0:
+            return
+
+        def score(entry: DepthColumnEntry, diagonal: Line) -> float:
+            distance = max(entry.rect.y0 - diagonal.start.y, diagonal.start.y - entry.rect.y1, 0.0)
+            if distance > avg_entries_height:
+                return -float("inf")
+            center = (entry.rect.y0 + entry.rect.y1) / 2
+            max_distance = avg_entries_height + entry.rect.height / 2
+            return 1.0 - abs(center - diagonal.start.y) / (2 * max_distance)
+
+        ordered_entries = sorted(self.entries, key=lambda entry: entry.rect.y0 + entry.rect.y1)
+        ordered_diagonals = sorted(
+            set(diagonals),
+            key=lambda diagonal: (diagonal.start.y, diagonal.start.x, diagonal.end.y, diagonal.end.x),
+        )
+        _, mapping = OrderedMatchingDP(ordered_entries, ordered_diagonals, [0.0] * len(ordered_diagonals)).solve(score)
+        for entry, diagonal in mapping:
+            entry.relative_shift = float(diagonal.end.y - (entry.rect.y0 + entry.rect.y1) / 2)
 
     def prevent_shifts_crossing(self):
         """Ensure that the vertical shifts of sidebar entries do not cause them to cross each other.
