@@ -7,39 +7,39 @@ name = "swissgeol-boreholes-dataextraction"
 dynamic = ["version"]
 description = "Python project to analyse borehole profiles."
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.14"
 dependencies = [
-    "boto3==1.40.12",
-    "pandas==2.3.1",
+    "boto3==1.44.0",
+    "pandas==3.1.1",
     "levenshtein==0.27.1",
-    "python-dotenv==1.1.1",
-    "pydantic_settings==2.10.1",
-    "pydantic==2.11.7",
+    "python-dotenv>=1.2.3",
+    "pydantic-settings>=2.16.2",
+    "pydantic>=2.14.3",
     "httpx==0.28.1",
-    "pillow==13.0.0",
-    "mangum==0.19.0",
-    "scikit-learn==1.7.1",
-    "scikit-image==0.25.2",
-    "click==8.2.1",
-    "PyYAML==6.0.2",
-    "regex==2025.7.34",
+    "pillow>=13.0.0",
+    "mangum>=0.22.0",
+    "scikit-learn>=1.9.1",
+    "scikit-image>=0.26.0",
+    "click>=8.5.1",
+    "PyYAML>=6.0.3",
+    "regex>=2026.11.9",
     "backoff==2.2.1",
-    "PyMuPDF==1.26.3",
+    "PyMuPDF>=2.1",
     "opencv-contrib-python-headless==5.0.0.93",
-    "fastquadtree==2.0.2",
-    "numpy==2.2.6",
+    "fastquadtree>=2.4.2",
+    "numpy>=2.5.4",
     "nltk==3.10.4",
     "rdflib==7.1.4",
     "compound_split==1.0.2",
     "fast-langdetect==1.0.0",
     "anthropic[bedrock]",
-    "scipy>=1.17.1",
+    "scipy>=1.18.1",
 ]
 
 [project.optional-dependencies]
 api = [
     "python-multipart==0.0.32",
-    "fastapi==0.159.0",
+    "fastapi==0.162.0",
     "uvicorn==0.54.0"
 ]
 test = [
@@ -58,8 +58,9 @@ azure-remote = [
     "azureml-mlflow",
 ]
 experiment-tracking = [
-    "mlflow==3.17.0",
-    "pygit2==1.18.2"
+    "mlflow==3.18.0",
+    "pyarrow>=26.0.1",
+    "pygit2==1.21.0"
 ]
 visualize = [
     "matplotlib==3.10.5"
@@ -73,13 +74,13 @@ devtools = [
 deep-learning = [
     "transformers==4.55.2",
     "datasets==4.0.0",
-    "torch==2.8.0",
+    "torch>=2.15.0",
     "accelerate==1.10.0",
 ]
 deep-learning-cpu = [
     "transformers==4.55.2",
     "datasets==4.0.0",
-    "torch==2.8.0",
+    "torch>=2.15.0",
     "accelerate==1.10.0",
 ]
 

@@ -170,7 +170,7 @@ def _detect_table_from_thresholded(
 
     # Remove small connected components (in the line mask)
     label_img = label(grid)
-    label_img = remove_small_objects(label_img, min_size=4 * min_line_length * min_line_dilation)
+    label_img = remove_small_objects(label_img, max_size=4 * min_line_length * min_line_dilation)
 
     # Candidates are large background “cells”
     label_img_inv = label(label_img == 0)

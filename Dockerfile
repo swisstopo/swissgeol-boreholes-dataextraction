@@ -1,6 +1,6 @@
 ## ------ Build stage
 # Use the specified Python-slim version as the base image
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder
 
 # Add temporary SCM version for hatchling.build
 ARG VERSION=0.0.0
@@ -18,7 +18,7 @@ RUN uv sync --no-dev --no-install-project --compile --extra deep-learning-cpu --
 
 
 ## ------ Runtime stage
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 ARG VERSION
 
