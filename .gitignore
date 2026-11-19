@@ -5,6 +5,7 @@ data-legacy/
 /notebooks
 /mlruns
 /mlartifacts
+/mlflow.db
 /models/
 /config/
 
