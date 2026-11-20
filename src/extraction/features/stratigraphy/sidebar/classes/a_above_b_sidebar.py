@@ -242,13 +242,14 @@ class AAboveBSidebar(DepthColumEntrySidebar):
 
         Note: this function modifies the attribute 'relative_shift' of each sidebar entry in place.
         """
-        prev_y1 = 0.0
+        prev_y0 = 0.0
         for entry in self.entries:
             entry_y0 = entry.rect.y0
-            entry_height = entry.rect.y1 - entry.rect.y0
-            if prev_y1 - entry_height / 2 > entry_y0 + entry.relative_shift:
-                entry.relative_shift = prev_y1 - entry_y0 - entry_height / 2
-            prev_y1 = entry_y0 + entry.relative_shift + entry_height
+            if entry_y0 + entry.relative_shift < prev_y0:
+                # when we need to make an adjustment, then immediately add half the entry height
+                # to separate the entries in a plausible way
+                entry.relative_shift = prev_y0 - entry_y0 + entry.rect.height / 2
+            prev_y0 = entry.rect.y0 + entry.relative_shift
 
 
 def generate_alternatives(value: float) -> list[float]:

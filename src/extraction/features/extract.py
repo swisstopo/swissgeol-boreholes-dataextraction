@@ -445,8 +445,13 @@ class BoreholeExtractor:
                 and strip_log_section.bbox.x0 < line.end.x
             )
             # a diagonal can start inside the strip log, as long as most of the line is to the right of the strip log
-            return relevant_strip_log and line.start.x < strip_log_section.bbox.x1 and (
-                line.end.x < strip_log_section.bbox.x1 or line.end.x - strip_log_section.bbox.x1 > strip_log_section.bbox.x1 - line.start.x
+            return (
+                relevant_strip_log
+                and line.start.x < strip_log_section.bbox.x1
+                and (
+                    line.end.x < strip_log_section.bbox.x1
+                    or line.end.x - strip_log_section.bbox.x1 > strip_log_section.bbox.x1 - line.start.x
+                )
             )
 
         # vertical and horizontal lines are likely noise
