@@ -444,8 +444,9 @@ class BoreholeExtractor:
                 strip_log_section.bbox.y0 <= line.start.y <= strip_log_section.bbox.y1
                 and strip_log_section.bbox.x0 < line.end.x
             )
-            # allow a small margin, so that diagonal can start on the right-hand edge of the strip log
-            return relevant_strip_log and line.start.x < strip_log_section.bbox.x1 - median_text_height / 4
+
+            # a diagonal can start inside the strip log, as long as most of the line is to the right of the strip log
+            return relevant_strip_log and (line.end.x + line.start.x) / 2 <= strip_log_section.bbox.x1
 
         # vertical and horizontal lines are likely noise
         angle_threshold = line_detection_params["diagonals_params"]["angle_threshold"]

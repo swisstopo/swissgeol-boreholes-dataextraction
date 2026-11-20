@@ -234,7 +234,7 @@ def _rescale_bboxes(bboxes: list[pymupdf.Rect], scale: float) -> list[pymupdf.Re
     Returns:
         list[pymupdf.Rect]: Rescaled bounding boxes.
     """
-    return [pymupdf.Rect((scale * np.array(bbox)).astype(int).tolist()) for bbox in bboxes]
+    return [pymupdf.Rect((scale * np.array(bbox)).tolist()) for bbox in bboxes]
 
 
 def _score_crowding(im_binary: np.ndarray, kernel_size: int = 5, margin: int = 2) -> float:
