@@ -4,14 +4,14 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
 
 jobs:
   pytest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@v8.1.0
@@ -32,7 +32,9 @@ jobs:
             --cov=utils \
             tests/ | tee pytest-coverage.txt
 
+      # Runs ONLY on internal PRs where GITHUB_TOKEN has write permissions
       - name: Pytest coverage comment # For more information see: https://github.com/MishaKav/pytest-coverage-comment/
+        if: github.event.pull_request.head.repo.full_name == github.repository
         uses: MishaKav/pytest-coverage-comment@main
         with:
           pytest-coverage-path: ./pytest-coverage.txt
