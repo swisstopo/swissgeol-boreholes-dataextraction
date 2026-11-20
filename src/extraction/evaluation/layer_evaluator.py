@@ -15,7 +15,7 @@ from extraction.features.predictions.borehole_predictions import (
 )
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
-from extraction.utils.dynamic_matching import PredToGroundTruthLayerDP
+from extraction.utils.dynamic_matching import OrderedMatchingDP
 from swissgeol_doc_processing.utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
@@ -309,7 +309,7 @@ class LayerEvaluator:
                     truth layers. Maximum is 1.0.
                 - mapping (list[(Layer, GroundTruthLayer)]): mappings between predicted and ground truth layers.
         """
-        dp = PredToGroundTruthLayerDP(predicted_layers, ground_truth_layers, [0.0] * len(ground_truth_layers))
+        dp = OrderedMatchingDP(predicted_layers, ground_truth_layers, [0.0] * len(ground_truth_layers))
         return dp.solve(scoring_fn)
 
 

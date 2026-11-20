@@ -175,25 +175,24 @@ class IntervalToLinesDP(DP):
         ]
 
 
-class PredToGroundTruthLayerDP(DP):
-    """Dynamic programming matcher for predicted layers to ground truth layers matching."""
+class OrderedMatchingDP(DP):
+    """Match two ordered sequences one to one, allowing elements on either side to be skipped."""
 
     def _build_dp_table(self, pair_score: list[list[float]]) -> tuple[list[list[float]], list[list[str]]]:
-        """Build the dynamic programming table for layer matching.
+        """Build the dynamic programming table for ordered one-to-one matching.
 
-        The algorithm finds the optimal alignment between predicted and ground truth layers
+        The algorithm finds the optimal alignment between left and right elements
         while preserving their relative order. It uses a dynamic programming approach where:
         - Each cell dp[i][j] represents the best cumulative score for matching the first i
-          predictions with the first j ground truth layers
+          left elements with the first j right elements
         - Moves can be:
-          * Diagonal: Match current prediction with current ground truth (score from pair_score)
-          * Up: Skip current prediction (no additional score)
-          * Left: Skip current ground truth (no additional score)
+          * Diagonal: Match current left element with current right element (score from pair_score)
+          * Up: Skip current left element (no additional score)
+          * Left: Skip current right element (no additional score)
         - In case of equal scores, diagonal moves are preferred to preserve matching, then up moves, then left moves.
 
         Args:
-            pair_score (list[list[float]]): The pairwise scores between predicted and ground truth layers.
-                Each score combines text similarity and depth matching accuracy.
+            pair_score (list[list[float]]): The pairwise scores between left and right elements.
 
         Returns:
             tuple: A tuple containing:
@@ -216,21 +215,21 @@ class PredToGroundTruthLayerDP(DP):
         return dp, ptr
 
     def _get_mapping(self, ptr: list[list[str]]) -> list[Match]:
-        """Get the mapping between predicted and ground truth layers by backtracking through the DP table.
+        """Get the mapping between left and right elements by backtracking through the DP table.
 
         Args:
             ptr (list[list[str]]): The pointer table for backtracking.
 
         Returns:
-            list[Match]: The mapping between predicted and ground truth layers.
+            list[Match]: The one-to-one mapping between left and right elements.
         """
         i, j = self.nL, self.nR
         mapping = []
         while i > 0 and j > 0:
             move = ptr[i][j]
             if move == "diag":
-                predicted_layer_index, ground_truth_layer_index = i - 1, j - 1
-                mapping.append((predicted_layer_index, ground_truth_layer_index))
+                left_idx, right_idx = i - 1, j - 1
+                mapping.append((left_idx, right_idx))
                 i, j = i - 1, j - 1
             elif move == "up":
                 i -= 1
