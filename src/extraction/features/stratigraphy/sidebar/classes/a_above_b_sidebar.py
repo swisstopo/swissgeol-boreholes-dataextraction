@@ -236,6 +236,10 @@ class AAboveBSidebar(DepthColumEntrySidebar):
         _, mapping = OrderedMatchingDP(ordered_entries, ordered_diagonals, [0.0] * len(ordered_diagonals)).solve(score)
         for entry, diagonal in mapping:
             entry.relative_shift = float(diagonal.end.y - (entry.rect.y0 + entry.rect.y1) / 2)
+            print()
+            print(entry.value, entry.rect)
+            print(diagonal)
+            print(entry.relative_shift)
 
     def prevent_shifts_crossing(self):
         """Ensure that the vertical shifts of sidebar entries do not cause them to cross each other.
