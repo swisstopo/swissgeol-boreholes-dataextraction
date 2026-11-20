@@ -11,22 +11,21 @@ from swissgeol_doc_processing.text.textline_affinity import Affinity
 
 
 def match_with_dynamic_programming(
-    sidebar: Sidebar, description_lines: list[TextLine], affinities: list[Affinity]
+    sidebar: Sidebar, description_lines: list[TextLine], affinity_scores: list[float]
 ) -> list[tuple[IntervalZone, list[TextLine]]]:
     """Apply dynamic programming to find the best matching between depth intervals and description lines.
 
     Args:
         sidebar (Sidebar): the sidebar to match the descriptions with.
         description_lines (list[TextLine]): The text lines that to create the material descriptions from.
-        affinities (list[Affinity]): the affinity between each line pair, previously computed.
+        affinity_scores (list[float]): the affinity score for each line with the one above, previously computed and
+            weighted according to the sidebar type.
 
     Returns:
         list[tuple[IntervalZone, list[TextLine]]]: The computed mapping between depth intervals and description lines.
     """
     depth_interval_zones = sidebar.get_interval_zone()
 
-    # affinities can differ depending on sidebar type
-    affinity_scores = sidebar.dp_weighted_affinities(affinities)
     dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
 
     _, mapping = dp.solve(sidebar.dp_scoring_fn)
@@ -39,6 +38,53 @@ def match_with_dynamic_programming(
             mapping.pop(0)
 
     return mapping
+
+
+def partition_lines(description_lines: list[TextLine]) -> list[list[TextLine]]:
+    """Partition the description lines, separating where the vertical gap between two consecutive lines is large.
+
+    A new partition is started wherever the vertical gap between two consecutive lines is greater than the maximum
+    of the heights of both lines.
+
+    Args:
+        description_lines (list[TextLine]): The description lines to partition.
+
+    Returns:
+        list[list[TextLine]]: The computed partitions of the description lines.
+    """
+    partitions = []
+    current_partition = []
+    for line in description_lines:
+        if current_partition:
+            prev_line = current_partition[-1]
+            gap = line.rect.y0 - prev_line.rect.y1
+            if gap > max(prev_line.rect.height, line.rect.height):
+                partitions.append(current_partition)
+                current_partition = []
+        current_partition.append(line)
+    if current_partition:
+        partitions.append(current_partition)
+    return partitions
+
+
+def weight_affinity_scores(affinity_scores: list[float], description_lines: list[TextLine]) -> list[float]:
+    """Weight the affinity scores linearly by the number of lines in the partition each line belongs to.
+
+    The partitions are computed from the vertical gaps between consecutive description lines (see partition_lines).
+    The affinity score of each line is multiplied by the number of lines in its partition, so that affinities within
+    larger (more significant) partitions have a stronger influence on the dynamic programming matching.
+
+    Args:
+        affinity_scores (list[float]): The affinity scores, one per description line.
+        description_lines (list[TextLine]): The description lines corresponding to the affinity scores.
+
+    Returns:
+        list[float]: The reweighted affinity scores.
+    """
+    partitions = partition_lines(description_lines)
+    # partitions preserve the order of the description lines, so the sizes are aligned with the affinity scores
+    partition_sizes = [len(partition) for partition in partitions for _ in partition]
+    return [score * size / 10 for score, size in zip(affinity_scores, partition_sizes, strict=True)]
 
 
 def is_great_protocol_sidebar_mapping(mapping: list[tuple[IntervalZone, list[TextLine]]], threshold: float) -> bool:
@@ -83,7 +129,9 @@ def match_lines_to_interval(
     if isinstance(sidebar, AAboveBSidebar):
         # If everything fits really well as a protocol sidebar, then we should treat it as one
         protocol_sidebar = ProtocolSidebar(sidebar.unfiltered_entries)
-        mapping = match_with_dynamic_programming(protocol_sidebar, description_lines, affinities)
+        mapping = match_with_dynamic_programming(
+            protocol_sidebar, description_lines, protocol_sidebar.dp_weighted_affinities(affinities)
+        )
         if is_great_protocol_sidebar_mapping(mapping, protocol_great_match_threshold):
             return protocol_sidebar.post_processing(mapping)
 
@@ -91,7 +139,10 @@ def match_lines_to_interval(
         sidebar.compute_entries_shift(diagonals)
         sidebar.prevent_shifts_crossing()
 
-    mapping = match_with_dynamic_programming(sidebar, description_lines, affinities)
+    # affinities within larger partitions (separated by large vertical gaps) are given more weight
+    weighted_affinities = weight_affinity_scores(sidebar.dp_weighted_affinities(affinities), description_lines)
+
+    mapping = match_with_dynamic_programming(sidebar, description_lines, weighted_affinities)
 
     for entry in sidebar.entries:
         # Reset for when the same entries are re-used again in the context of a different sidebar / material
