@@ -60,30 +60,6 @@ class Affinity:
         """Compute the total affinity with equal weights."""
         return self.weighted_affinity(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
-    def weighted_mean_affinity(
-        self,
-        line_weight: float,
-        left_line_weight: float,
-        spacing_weight: float,
-        right_end_weight: float,
-        diagonal_weight: float,
-        indentation_weight: float,
-    ) -> float:
-        """Compute the weighted affinity using the provided weights."""
-        weights = [
-            line_weight,
-            left_line_weight,
-            spacing_weight,
-            right_end_weight,
-            diagonal_weight,
-            indentation_weight,
-        ]
-        return self.weighted_affinity(*weights) / sum(weights)
-
-    def mean_affinity(self) -> float:
-        """Compute the mean affinity."""
-        return self.weighted_mean_affinity(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-
 
 class LineAffinityCalculator:
     """Class responsible to compute the line affinities."""
@@ -230,12 +206,12 @@ class LineAffinityCalculator:
             current_line (TextLine): The current line.
 
         Returns:
-            float: The affinity: -1.0 if lines are not compatible, up to 1.0 if they totally overlap.
+            float: The affinity: -1.0 if lines are far apart, 0.0 if they are adjacent, up to 0.25 if they overlap.
         """
         current_rect = current_line.rect
         previous_rect = previous_line.rect
         h_reference = current_rect.height if self.at_least_one_overlap else self.spacing_threshold
-        score = max(-1.0, 1.0 - (current_rect.y1 - previous_rect.y1) / h_reference)  # not capped at 0
+        score = min(0.25, max(-1.0, 1.0 - (current_rect.y1 - previous_rect.y1) / h_reference))  # not capped at 0
         return score
 
     def compute_right_end_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
@@ -346,6 +322,17 @@ def get_line_affinity(
     )
     affinities = [Affinity.get_zero_affinity()]  # first line has no previous
     for previous_line, line in zip(description_lines, description_lines[1:], strict=False):
+        print(line.text)
+        print(
+            [
+                calculator.compute_long_lines_affinity(previous_line, line),
+                calculator.compute_lines_on_the_left_affinity(previous_line, line),
+                calculator.compute_vertical_spacing_affinity(previous_line, line),
+                calculator.compute_right_end_affinity(previous_line, line),
+                calculator.compute_diagonal_affinity(previous_line, line),
+                calculator.compute_indentation_affinity(previous_line, line),
+            ]
+        )
         affinities.append(
             Affinity(
                 calculator.compute_long_lines_affinity(previous_line, line),

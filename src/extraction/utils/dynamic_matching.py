@@ -51,13 +51,10 @@ class DP(ABC):
         # Precompute pairwise scores
         pairwise_scores = self._compute_scores(scoring_fn)
 
-        # Build DP table and pointer
-        dp, ptr = self._build_dp_table(pairwise_scores)
+        # Build DP table and backtrack to recover mapping
+        score, left_to_right_mapping = self._get_mapping(pairwise_scores)
 
-        # Backtrack to recover mapping
-        left_to_right_mapping = self._get_mapping(ptr)
-
-        matching_score = dp[self.nL][self.nR] / max(self.nL, self.nR)  # maximum is 1.
+        matching_score = score / max(self.nL, self.nR)  # maximum is 1.
         return matching_score, left_to_right_mapping
 
     def _compute_scores(self, scoring_fn: Callable[[L, R], float]) -> list[list[float]]:
@@ -77,12 +74,7 @@ class DP(ABC):
         return pair_score
 
     @abstractmethod
-    def _build_dp_table(self, pair_score: list[list[float]]) -> tuple[list[list[float]], list[list[str]]]:
-        """Build the dynamic programming table."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def _get_mapping(self, ptr: list[list[str]]) -> list[Match]:
+    def _get_mapping(self, pair_score: list[list[float]]) -> tuple[float, list[Match]]:
         """Get the mapping between left and right elements by backtracking through the DP table."""
         raise NotImplementedError
 
@@ -90,8 +82,8 @@ class DP(ABC):
 class IntervalToLinesDP(DP):
     """Dynamic programming matcher for interval zone to lines matching."""
 
-    def _build_dp_table(self, pair_score: list[list[float]]) -> tuple[list[list[float]], list[list[str]]]:
-        """Build the dynamic programming table for layer matching.
+    def _get_mapping(self, pair_score: list[list[float]]) -> tuple[float, Match]:
+        """Get the mapping between intervals and text lines by backtracking through the DP table.
 
         The algorithm finds the optimal alignment between interval zones and text lines while preserving their
         relative order. It uses a dynamic programming approach where:
@@ -104,57 +96,78 @@ class IntervalToLinesDP(DP):
         - In case of equal scores, diagonal moves are preferred to preserve matching,
           followed by up moves, then left moves.
 
+        Forbidden transitions:
+            We never allow an up move to be immediately followed by a left move, nor a left move to be immediately
+            followed by an up move. Both patterns are degenerate ways of "re-labeling" what should instead be scored
+            as a single diagonal step: a line that starts a new interval should be charged once by the diagonal move,
+            not smeared over an up+left (or left+up) pair that would let the same line both close one interval and
+            open the next while double-counting the empty-interval penalty and the affinity bonus.
+
+            This is enforced by tracking, for every cell dp[i][j], a separate score per *last move taken*
+            (dp[i][j]["up"], dp[i][j]["diag"], dp[i][j]["left"]) together with the corresponding predecessor pointer
+            (ptr[i][j][move]). Each move then only accepts a compatible previous move:
+              * up   <- {diag, up}      (an empty interval can only follow a fresh start or another empty interval)
+              * left <- {diag, left}    (a continuation can only follow a fresh start or another continuation)
+              * diag <- {diag, up, left} (a fresh interval start may follow anything)
+            Because the predecessor sets for up and left share only "diag", an up can never directly follow a left
+            and a left can never directly follow an up.
+
         Args:
             pair_score (list[list[float]]): The pairwise scores between predicted and ground truth layers.
                 Each score combines text similarity and depth matching accuracy.
 
         Returns:
             tuple: A tuple containing:
-                - dp (list[list[float]]): The dynamic programming table with cumulative scores
-                - ptr (list[list[str]]): The pointer table storing move directions ('diag', 'up', 'left')
-                    used for backtracking to recover the optimal matching.
+                - score (float): The optimal matching score
+                - list[Match]: The mapping between intervals and possibly many lines.
         """
         EMPTY_INTERVAL_PENALTY = matching_params["empty_interval_penalty"]
-        dp = [[-float("inf")] * (self.nR + 1)] + [[0.0] * (self.nR + 1) for _ in range(self.nL)]
-        for i in range(self.nL + 1):
-            dp[i][0] = -EMPTY_INTERVAL_PENALTY * i
-        ptr = [[None] * (self.nR + 1) for _ in range(self.nL + 1)]
+
+        def default_state(value) -> dict:
+            return {"up": value, "diag": value, "left": value}
+
+        # Initialize row by row. Each cell must be its own dict (no list * dict aliasing). Column 0 represents the
+        # state "no lines assigned yet": reachable only via up moves, costing one EMPTY_INTERVAL_PENALTY per interval.
+        dp = [
+            [{"up": -EMPTY_INTERVAL_PENALTY * i, "diag": -float("inf"), "left": -float("inf")}]
+            + [default_state(-float("inf")) for _ in range(self.nR)]
+            for i in range(self.nL + 1)
+        ]
+        ptr = [[default_state(None) for _ in range(self.nR + 1)] for _ in range(self.nL + 1)]
+
+        def pick_previous_move(i: int, j: int, options: list[str]) -> tuple[str, float]:
+            move = max(
+                options, key=lambda move: dp[i][j][move]
+            )  # in case of tie-break, the first maximal option is chosen
+            return move, dp[i][j][move]
 
         for i in range(1, self.nL + 1):
             for j in range(1, self.nR + 1):
                 # up: move to the previous interval without assigning the j'th line yet (in other words: the i'th
                 # interval will remain empty, as long as there is no "left" move immediately before)
-                up = dp[i - 1][j] - EMPTY_INTERVAL_PENALTY
+                prev_move, prev_score = pick_previous_move(i - 1, j, ["diag", "up"])
+                ptr[i][j]["up"] = prev_move
+                dp[i][j]["up"] = prev_score - EMPTY_INTERVAL_PENALTY
 
                 # left : assign the j'th line to the i'th interval, and stay with the same interval (in other words:
                 # this line does not start a new interval)
+                prev_move, prev_score = pick_previous_move(i, j - 1, ["diag", "left"])
+                ptr[i][j]["left"] = prev_move
                 bonus = self.right_affinity[j - 1]
-                left = dp[i][j - 1] + pair_score[i - 1][j - 1] + bonus  # steal: new pairing is better
+                # steal: new pairing is better
+                dp[i][j]["left"] = prev_score + pair_score[i - 1][j - 1] + bonus
 
                 # diag : assign the j'th line to the i'th interval, and move to the previous interval (in other words:
                 # this line starts a new interval)
-                diag = dp[i - 1][j - 1] + pair_score[i - 1][j - 1]
+                prev_move, prev_score = pick_previous_move(i - 1, j - 1, ["diag", "up", "left"])
+                ptr[i][j]["diag"] = prev_move
+                dp[i][j]["diag"] = prev_score + pair_score[i - 1][j - 1]
 
-                # tie-break: diag > up > left
-                candidates = [("diag", diag, 3), ("up", up, 2), ("left", left, 1)]
-                move, score, _ = max(candidates, key=lambda x: (x[1], x[2]))  # break tie with prioritize matching
-                dp[i][j] = score
-                ptr[i][j] = move
-        return dp, ptr
-
-    def _get_mapping(self, ptr: list[list[str]]) -> list[Match]:
-        """Get the mapping between intervals and lines by backtracking through the DP table.
-
-        Args:
-            ptr (list[list[str]]): The pointer table for backtracking.
-
-        Returns:
-            list[Match]: The mapping between intervals and possibly many lines.
-        """
         i, j = self.nL, self.nR
+        move, max_score = pick_previous_move(i, j, ["diag", "up", "left"])
         mapping: OrderedDict[int, list[int]] = defaultdict(list)
         while i > 0 and j > 0:
-            move = ptr[i][j]
+            previous_move = ptr[i][j][move]
             left_idx = i - 1
             right_idx = j - 1
             if move == "diag":
@@ -168,8 +181,9 @@ class IntervalToLinesDP(DP):
                 j -= 1
             else:
                 break
+            move = previous_move
 
-        return [
+        return max_score, [
             (self.left[left_idx], [self.right[right_idx] for right_idx in reversed(mapping[left_idx])])
             for left_idx in range(self.nL)
         ]
@@ -178,8 +192,10 @@ class IntervalToLinesDP(DP):
 class OrderedMatchingDP(DP):
     """Match two ordered sequences one to one, allowing elements on either side to be skipped."""
 
-    def _build_dp_table(self, pair_score: list[list[float]]) -> tuple[list[list[float]], list[list[str]]]:
-        """Build the dynamic programming table for ordered one-to-one matching.
+    def _get_mapping(self, pair_score: list[list[float]]) -> tuple[float, list[Match]]:
+        """Get the ordered one-to-one mapping between left and right elements.
+
+        This is doing by building a dynamic programming table and then backtracking through it.
 
         The algorithm finds the optimal alignment between left and right elements
         while preserving their relative order. It uses a dynamic programming approach where:
@@ -196,9 +212,8 @@ class OrderedMatchingDP(DP):
 
         Returns:
             tuple: A tuple containing:
-                - dp (list[list[float]]): The dynamic programming table with cumulative scores
-                - ptr (list[list[str]]): The pointer table storing move directions ('diag', 'up', 'left')
-                    used for backtracking to recover the optimal matching.
+                - score (float): The optimal matching score
+                - list[Match]: The one-to-one mapping between left and right elements.
         """
         dp = [[0.0] * (self.nR + 1) for _ in range(self.nL + 1)]
         ptr = [[None] * (self.nR + 1) for _ in range(self.nL + 1)]
@@ -212,17 +227,7 @@ class OrderedMatchingDP(DP):
                 choice = max(candidates, key=lambda x: (x[1], x[2]))  # break tie with prioritize matching
                 dp[i][j] = choice[1]
                 ptr[i][j] = choice[0]
-        return dp, ptr
 
-    def _get_mapping(self, ptr: list[list[str]]) -> list[Match]:
-        """Get the mapping between left and right elements by backtracking through the DP table.
-
-        Args:
-            ptr (list[list[str]]): The pointer table for backtracking.
-
-        Returns:
-            list[Match]: The one-to-one mapping between left and right elements.
-        """
         i, j = self.nL, self.nR
         mapping = []
         while i > 0 and j > 0:
@@ -239,4 +244,4 @@ class OrderedMatchingDP(DP):
                 break
         mapping.reverse()
 
-        return [(self.left[left_idx], self.right[right_idx]) for left_idx, right_idx in mapping]
+        return dp[self.nL][self.nR], [(self.left[left_idx], self.right[right_idx]) for left_idx, right_idx in mapping]

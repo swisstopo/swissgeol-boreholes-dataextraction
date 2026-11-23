@@ -10,51 +10,46 @@ protocol_min_num_layers: 1
 protocol_great_match_threshold: 0.1
 affinity_params:
   a_above_b:
-    importance: 5.0
     weights:
-      line_weight: 3.5
-      left_line_weight: 1.0
-      spacing_weight: 1.25
-      right_end_weight: 1.0
-      diagonal_weight: 1.25
-      indentation_weight: 0.6
+      line_weight: 1.5
+      left_line_weight: 0.5
+      spacing_weight: 0.7
+      right_end_weight: 0.5
+      diagonal_weight: 0.6
+      indentation_weight: 0.05
   a_to_b:
-    importance: 2.0
     weights:
-      line_weight: 1.0
-      left_line_weight: 1.0
-      spacing_weight: 1.0
-      right_end_weight: 1.0
+      line_weight: 0.5
+      left_line_weight: 0.5
+      spacing_weight: 0.5
+      right_end_weight: 0.5
       diagonal_weight: 0.0
       indentation_weight: 0.0
   layer_identifier:
-    importance: 0.66
     weights:
-      line_weight: 0.2
-      left_line_weight: 0.2
-      spacing_weight: 1.0
-      right_end_weight: 0.6
+      line_weight: 0.3
+      left_line_weight: 0.3
+      spacing_weight: 1.5
+      right_end_weight: 0.8
       diagonal_weight: 0.0
       indentation_weight: 0.0
   spulprobe:
-    importance: 2.0
     weights:
-      line_weight: 1.0
-      left_line_weight: 1.0
-      spacing_weight: 1.0
-      right_end_weight: 1.0
+      line_weight: 0.5
+      left_line_weight: 0.5
+      spacing_weight: 0.5
+      right_end_weight: 0.5
       diagonal_weight: 0.0
       indentation_weight: 0.0
   no_sidebar:
     weights:
-      line_weight: 1.0
-      left_line_weight: 1.0
-      spacing_weight: 1.0
-      right_end_weight: 0.5
-      diagonal_weight: 1.0
+      line_weight: 0.2
+      left_line_weight: 0.2
+      spacing_weight: 0.2
+      right_end_weight: 0.1
+      diagonal_weight: 0.2
       indentation_weight: 0.0
   protocol:
-    importance: 1.0
     min_entries: 2
     header_keywords:
       - Tiefe
@@ -65,11 +60,11 @@ affinity_params:
     max_header_gap: 40
     # those parameters were chosen randomly but they behave well so far.
     weights:
-      line_weight: 1.0
-      left_line_weight: 1.0
-      spacing_weight: 1.0
-      right_end_weight: 1.0
-      diagonal_weight: 1.0
+      line_weight: 0.2
+      left_line_weight: 0.2
+      spacing_weight: 0.2
+      right_end_weight: 0.2
+      diagonal_weight: 0.2
       indentation_weight: 0.0
 empty_interval_penalty: 0.5
 
