@@ -205,12 +205,28 @@ class BoreholeExtractor:
 
         diagonals = self.get_diagonals_near_textlines(description_lines, self.line_detection_params)
 
+        # Compute indentation base for better affinity computation
+        # We expect that at least the first description line of every layer should be at the base.
+        if sidebar and description_lines:
+            num_depth_intervals = len(sidebar.get_interval_zone())
+            num_description_lines = len(description_lines)
+
+            if num_description_lines > num_depth_intervals:
+                # Sort description lines by x0 (leftmost position) to find the indentation base
+                sorted_by_x0 = sorted(description_lines, key=lambda line: line.rect.x0)
+                indentation_base = sorted_by_x0[num_depth_intervals - 1].rect.x0
+            else:
+                indentation_base = max(line.rect.x0 for line in description_lines)
+        else:
+            indentation_base = 0
+
         line_affinities = get_line_affinity(
             description_lines,
             material_description_rect,
             self.all_geometric_lines,
             self.line_detection_params,
             diagonals,
+            indentation_base=indentation_base,
             block_line_ratio=self.matching_params["block_line_ratio"],
             left_line_length_threshold=self.matching_params["left_line_length_threshold"],
         )
