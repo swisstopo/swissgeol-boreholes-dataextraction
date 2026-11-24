@@ -208,7 +208,7 @@ class BoreholeExtractor:
         # Compute indentation base for better affinity computation
         # We expect that at least the first description line of every layer should be at the base.
         if sidebar and description_lines:
-            num_depth_intervals = len(sidebar.entries)
+            num_depth_intervals = len(sidebar.get_interval_zone())
             num_description_lines = len(description_lines)
 
             if num_description_lines > num_depth_intervals:
