@@ -285,8 +285,10 @@ class LineAffinityCalculator:
                 max(prev_line_start - low_margin, self.indentation_base + low_margin) <= current_line_start
             ):  # accept small tolerance
                 return 3.0  # both lines are indented, stronger affinity
-            else:
+            elif current_line_start <= self.indentation_base:
                 return -1.0  # previous line was indented, this one is not
+            else:
+                return 0.0
 
         if (
             max(prev_line_start, self.indentation_base) + low_margin

@@ -25,8 +25,11 @@ def match_with_dynamic_programming(
     """
     depth_interval_zones = sidebar.get_interval_zone()
 
+    # affinities generally only apply once per layer (e.g. a horizontal line between the layers) while the scoring
+    # function is applied for each text line. Therefore, we weight the affinities to balance this out.
+    affinity_factor = len(description_lines) / len(depth_interval_zones) if len(depth_interval_zones) > 0 else 1.0
     # affinities can differ depending on sidebar type
-    affinity_scores = sidebar.dp_weighted_affinities(affinities)
+    affinity_scores = [affinity_factor * affinity for affinity in sidebar.dp_weighted_affinities(affinities)]
     dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
 
     _, mapping = dp.solve(sidebar.dp_scoring_fn)

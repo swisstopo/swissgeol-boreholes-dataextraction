@@ -11,12 +11,12 @@ protocol_great_match_threshold: 0.1
 affinity_params:
   a_above_b:
     weights:
-      line_weight: 2.0
-      left_line_weight: 0.6
-      spacing_weight: 0.8
-      right_end_weight: 0.6
-      diagonal_weight: 0.8
-      indentation_weight: 0.5
+      line_weight: 1.0
+      left_line_weight: 0.45
+      spacing_weight: 0.7
+      right_end_weight: 0.45
+      diagonal_weight: 0.6
+      indentation_weight: 0.375
   a_to_b:
     weights:
       line_weight: 0.5
