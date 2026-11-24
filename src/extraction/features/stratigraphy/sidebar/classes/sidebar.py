@@ -109,9 +109,8 @@ class Sidebar(abc.ABC, Generic[EntryT]):
             list[float]: A list of floats condensing the affinities, according to the sidebar type.
         """
         affinity_params = matching_params["affinity_params"][self.kind]
-        affinity_importance = affinity_params["importance"]
         weights = affinity_params["weights"]
-        return [affinity_importance * affinity.weighted_mean_affinity(**weights) for affinity in affinities]
+        return [affinity.weighted_affinity(**weights) for affinity in affinities]
 
     def post_processing(
         self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]
