@@ -15,8 +15,8 @@ max_image_dimension: 10000
 line_merging_params:
   # maximum distance between two lines that are merged
   merging_tolerance: 12
-  angle_threshold: 5
+  angle_threshold: 4
   min_line_length: 100
 
 diagonals_params:
-  angle_threshold: 5
+  angle_threshold: 4
