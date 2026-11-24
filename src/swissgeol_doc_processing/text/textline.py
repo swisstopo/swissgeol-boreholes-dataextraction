@@ -47,7 +47,6 @@ class TextLine:
         self.page_number = next((word.page_number for word in words), None)
         self.words = words
         self.text_angle = text_angle
-        self.is_indented = False
 
     def __repr__(self) -> str:
         return f"TextLine({self.text}, {self.rect})"

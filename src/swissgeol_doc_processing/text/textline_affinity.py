@@ -97,6 +97,7 @@ class LineAffinityCalculator:
         line_detection_params: dict,
         description_lines: list[TextLine],
         diagonals: list[Line],
+        indentation_base: float = 0.0,
     ):
         """Initialize the LineAffinityCalculator.
 
@@ -109,9 +110,11 @@ class LineAffinityCalculator:
             line_detection_params (dict): The parameters for line detection.
             description_lines (list[TextLine]): The list of description lines
             diagonals (list[Line]): The list of diagonal textline-to-interval connections detected on the page.
+            indentation_base (float): The base x-coordinate for indentation detection. Defaults to 0.0.
         """
         self.block_line_ratio = block_line_ratio
         self.left_line_length_threshold = left_line_length_threshold
+        self.indentation_base = indentation_base
 
         self.material_description_rect = material_description_rect
         angle_tolerance = line_detection_params["line_merging_params"]["angle_threshold"]
@@ -277,12 +280,15 @@ class LineAffinityCalculator:
                 return -1.0
         return 0.0
 
-    def compute_indentation_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
+    def compute_indentation_affinity(
+        self, previous_line: TextLine, current_line: TextLine, previous_line_indented: bool
+    ) -> float:
         """Split the text block based on indentation.
 
         Args:
             previous_line (TextLine): The previous line.
             current_line (TextLine): The current line.
+            previous_line_indented (bool): Whether the previous line was indented.
 
         Returns:
             float: The affinity: -1.0 the line has an indentation return, 3.0 if the previous already was indented,
@@ -298,15 +304,19 @@ class LineAffinityCalculator:
         low_margin = 0.03 * max_line_width
         high_margin = 0.2 * max_line_width
 
-        if previous_line.is_indented:
-            if current_line_start >= prev_line_start - low_margin:  # accept small tolerance
-                current_line.is_indented = True
+        if previous_line_indented:
+            if (
+                max(prev_line_start - low_margin, self.indentation_base + low_margin) <= current_line_start
+            ):  # accept small tolerance
                 return 3.0  # both lines are indented, stronger affinity
             else:
                 return -1.0  # previous line was indented, this one is not
 
-        if prev_line_start + low_margin <= current_line_start <= prev_line_start + high_margin:
-            current_line.is_indented = True
+        if (
+            max(prev_line_start, self.indentation_base) + low_margin
+            <= current_line_start
+            <= prev_line_start + high_margin
+        ):
             return 1.0  # first indented line detected
         return 0.0
 
@@ -317,6 +327,7 @@ def get_line_affinity(
     geometric_lines: list[Line],
     line_detection_params: dict,
     diagonals: list[Line],
+    indentation_base: float,
     block_line_ratio: float,
     left_line_length_threshold: float,
 ) -> list[Affinity]:
@@ -327,8 +338,8 @@ def get_line_affinity(
         material_description_rect (pymupdf.Rect): The bounding box for all material descriptions.
         geometric_lines (list[Line]): The geometric lines detected in the pdf page.
         line_detection_params (dict): The parameters for line detection.
-        description_lines (list[TextLine]): The list of description lines.
         diagonals (list[Line]): The list of diagonal textline-to-interval connections detected on the page.
+        indentation_base (float): The base x-coordinate for indentation detection.
         block_line_ratio (float): Percentage of the block width that needs to be covered by a line.
         left_line_length_threshold (int): The minimum length of a line segment on the left side of a block to split it.
 
@@ -343,9 +354,13 @@ def get_line_affinity(
         line_detection_params,
         description_lines,
         diagonals,
+        indentation_base,
     )
+    previous_line_indented = False
     affinities = [Affinity.get_zero_affinity()]  # first line has no previous
     for previous_line, line in zip(description_lines, description_lines[1:], strict=False):
+        indentation_affinity = calculator.compute_indentation_affinity(previous_line, line, previous_line_indented)
+        previous_line_indented = indentation_affinity > 0
         affinities.append(
             Affinity(
                 calculator.compute_long_lines_affinity(previous_line, line),
@@ -353,7 +368,7 @@ def get_line_affinity(
                 calculator.compute_vertical_spacing_affinity(previous_line, line),
                 calculator.compute_right_end_affinity(previous_line, line),
                 calculator.compute_diagonal_affinity(previous_line, line),
-                calculator.compute_indentation_affinity(previous_line, line),
+                indentation_affinity,
             )
         )
 

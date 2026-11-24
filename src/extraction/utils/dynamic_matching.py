@@ -97,20 +97,24 @@ class IntervalToLinesDP(DP):
           followed by up moves, then left moves.
 
         Forbidden transitions:
-            We never allow an up move to be immediately followed by a left move, nor a left move to be immediately
-            followed by an up move. Both patterns are degenerate ways of "re-labeling" what should instead be scored
-            as a single diagonal step: a line that starts a new interval should be charged once by the diagonal move,
-            not smeared over an up+left (or left+up) pair that would let the same line both close one interval and
-            open the next while double-counting the empty-interval penalty and the affinity bonus.
+            We never allow an up move to be immediately followed by a left move. Such an up+left pair is a degenerate
+            way of "re-labeling" what should instead be scored as a single diagonal step: a line that starts a new
+            interval should be charged once by the diagonal move, not smeared over an up+left pair that would let the
+            same line both close the skipped interval and open the next one, double-counting the empty-interval
+            penalty and the affinity bonus.
+
+            The reverse order, left followed by up, IS allowed: it is legitimate to finish a multi-line interval
+            (left) and then skip the next interval (up) when a borehole has an interval with a multi-line description
+            immediately above an interval that gets no description at all.
 
             This is enforced by tracking, for every cell dp[i][j], a separate score per *last move taken*
             (dp[i][j]["up"], dp[i][j]["diag"], dp[i][j]["left"]) together with the corresponding predecessor pointer
             (ptr[i][j][move]). Each move then only accepts a compatible previous move:
-              * up   <- {diag, up}      (an empty interval can only follow a fresh start or another empty interval)
-              * left <- {diag, left}    (a continuation can only follow a fresh start or another continuation)
+              * up   <- {diag, up, left} (an empty interval may follow anything, including a finished multi-line one)
+              * left <- {diag, left}     (a continuation can only follow a fresh start or another continuation)
               * diag <- {diag, up, left} (a fresh interval start may follow anything)
-            Because the predecessor sets for up and left share only "diag", an up can never directly follow a left
-            and a left can never directly follow an up.
+            Because the predecessor set for left contains only {diag, left}, a left can never directly follow an up,
+            while up remains free to follow a left.
 
         Args:
             pair_score (list[list[float]]): The pairwise scores between predicted and ground truth layers.
@@ -144,8 +148,8 @@ class IntervalToLinesDP(DP):
         for i in range(1, self.nL + 1):
             for j in range(1, self.nR + 1):
                 # up: move to the previous interval without assigning the j'th line yet (in other words: the i'th
-                # interval will remain empty, as long as there is no "left" move immediately before)
-                prev_move, prev_score = pick_previous_move(i - 1, j, ["diag", "up"])
+                # interval will remain empty)
+                prev_move, prev_score = pick_previous_move(i - 1, j, ["diag", "up", "left"])
                 ptr[i][j]["up"] = prev_move
                 dp[i][j]["up"] = prev_score - EMPTY_INTERVAL_PENALTY
 
