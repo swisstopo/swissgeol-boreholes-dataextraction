@@ -60,30 +60,6 @@ class Affinity:
         """Compute the total affinity with equal weights."""
         return self.weighted_affinity(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
-    def weighted_mean_affinity(
-        self,
-        line_weight: float,
-        left_line_weight: float,
-        spacing_weight: float,
-        right_end_weight: float,
-        diagonal_weight: float,
-        indentation_weight: float,
-    ) -> float:
-        """Compute the weighted affinity using the provided weights."""
-        weights = [
-            line_weight,
-            left_line_weight,
-            spacing_weight,
-            right_end_weight,
-            diagonal_weight,
-            indentation_weight,
-        ]
-        return self.weighted_affinity(*weights) / sum(weights)
-
-    def mean_affinity(self) -> float:
-        """Compute the mean affinity."""
-        return self.weighted_mean_affinity(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-
 
 class LineAffinityCalculator:
     """Class responsible to compute the line affinities."""
