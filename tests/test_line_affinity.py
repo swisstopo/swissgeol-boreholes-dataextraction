@@ -22,6 +22,7 @@ geometric_lines_lefthandside = [Line(Point(-1, 11), Point(3, 11))]  # left-hand 
 diagonal_line = [Line(Point(-6, 5), Point(-1, 11))]  # right end of diag is in between textlines
 
 material_description_rect = pymupdf.Rect(0, 0, 5, 42)
+indentation_base = 0
 block_line_ratio = 0.5
 left_line_length_threshold = 3
 
@@ -53,6 +54,7 @@ def test_get_description_blocks(geometrical_lines, diagonals, expected_num_block
         geometrical_lines,
         line_detection_params,
         diagonals,
+        indentation_base,
         block_line_ratio,
         left_line_length_threshold,
     )
