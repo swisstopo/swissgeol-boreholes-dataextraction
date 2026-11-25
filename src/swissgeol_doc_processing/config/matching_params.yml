@@ -47,7 +47,7 @@ affinity_params:
       left_line_weight: 0.2
       spacing_weight: 0.2
       right_end_weight: 0.1
-      diagonal_weight: 0.2
+      diagonal_weight: 0.0
       indentation_weight: 0.0
   protocol:
     min_entries: 2

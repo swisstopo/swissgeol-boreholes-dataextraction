@@ -261,7 +261,13 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
         for neighbour in neighbours:
             if _are_mergeable(line, neighbour, tol, angle_threshold):
                 new_line = _merge_lines(line, neighbour)
-                if new_line is not None:
+                # Merging two lines that are parallel but not sufficiently colinear can lead to a merged line
+                # with a different angle. We reject those merges.
+                if (
+                    new_line is not None
+                    and _are_parallel(new_line, line, angle_threshold)
+                    and _are_parallel(new_line, neighbour, angle_threshold)
+                ):
                     lines_quad_tree.remove(neighbour)
                     lines_quad_tree.remove(line)
                     lines_quad_tree.add(new_line)
