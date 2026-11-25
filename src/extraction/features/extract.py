@@ -299,7 +299,14 @@ class BoreholeExtractor:
             for entry in column.entries:
                 used_entry_rects.add(entry.rect)
 
-        words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
+        # We only consider the first two and last two words of every line as candidate entry for
+        # an AAboveB or Protocol sidebar.
+        words = [
+            word
+            for line in self.lines
+            for word in (line.words[:2] + line.words[-2:] if len(line.words) > 4 else line.words)
+        ]
+        words = sorted(words, key=lambda word: word.rect.y0)
         a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
             words,
             line_rtree,

@@ -7,7 +7,6 @@ from typing import Generic, Self, TypeVar
 
 import numpy as np
 import pymupdf
-from scipy.optimize import minimize_scalar
 from scipy.stats import gaussian_kde
 
 from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SidebarEntry
@@ -89,7 +88,7 @@ class Cluster(Generic[EntryT]):
             return Point(rect.x1, (rect.y0 + rect.y1) / 2)
 
         skew_degrees = cls._estimate_skew(entries, point_getters=(left_edge, midpoint, right_edge))
-        print("Skew degrees:", skew_degrees)
+        skew_slope = math.tan(math.radians(skew_degrees or 0))
 
         clusters: list[Cluster[EntryT]] = []
         # maps every entry to the set of indices of the clusters that contain this entry
@@ -111,19 +110,15 @@ class Cluster(Generic[EntryT]):
                     # skip if the entries already belong to the same cluster
                     continue
 
-                # check if rects align (left edge, right edge or midpoint)
-                accepted = False
-                for point_getter in (midpoint, left_edge, right_edge):
-                    point1 = point_getter(entry1)
-                    point2 = point_getter(entry2)
-                    # The two points align when their x-delta (after correcting for the estimated page skew) is less
-                    # than the smaller of the two entry heights.
-                    skew_correction = (point2.y - point1.y) * math.tan(math.radians(skew_degrees or 0))
-                    if abs(point2.x - point1.x + skew_correction) < min(entry1.rect.height, entry2.rect.height):
-                        accepted = True
-                        break
+                # Check if the x-ranges of the two entries overlap after correcting for the estimated page skew:
+                # each x-coordinate of the bottom entry is shifted back to the level of the top entry.
+                middle1 = (entry1.rect.y0 + entry1.rect.y1) / 2
+                middle2 = (entry2.rect.y0 + entry2.rect.y1) / 2
+                skew_correction = (middle2 - middle1) * skew_slope
+                corrected_x0 = entry2.rect.x0 + skew_correction
+                corrected_x1 = entry2.rect.x1 + skew_correction
 
-                if accepted:
+                if max(entry1.rect.x0, corrected_x0) < min(entry1.rect.x1, corrected_x1):
                     cluster_span = ClusterSpan(entry1.rect, entry2.rect)
 
                     intermediate_entries = []
@@ -205,12 +200,11 @@ class Cluster(Generic[EntryT]):
         # Continuous orientation density function: each observed angle contributes a Gaussian (KDE).
         density = gaussian_kde(deviations, bw_method=lambda _: bandwidth)
 
-        # Find the peak of the density function, to an accuracy of 0.01 degrees. Note that gaussian_kde returns a
-        # numpy array even for scalar input, so we convert the objective value (and the result) to a plain float.
-        result = minimize_scalar(
-            lambda angle: -float(density(angle)), bounds=(-max_skew_degrees, max_skew_degrees), method="bounded"
-        )
-        return round(float(result.x), 2)
+        # Find the global peak of the density function, to an accuracy of 0.01 degrees. A local optimizer could
+        # converge to a minor peak in a multimodal density, so instead we do an exhaustive grid search. The grid
+        # spacing of 0.005 degrees is well below the bandwidth, so the global peak cannot be missed.
+        grid = np.arange(-max_skew_degrees, max_skew_degrees + 0.005, 0.005)
+        return round(float(grid[np.argmax(density(grid))]), 2)
 
 
 @dataclasses.dataclass
