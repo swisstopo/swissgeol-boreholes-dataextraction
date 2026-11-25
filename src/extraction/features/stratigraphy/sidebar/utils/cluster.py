@@ -119,7 +119,7 @@ class Cluster(Generic[EntryT]):
                     # The two points align when their x-delta (after correcting for the estimated page skew) is less
                     # than the smaller of the two entry heights.
                     skew_correction = (point2.y - point1.y) * math.tan(math.radians(skew_degrees or 0))
-                    if abs(point2.x - point1.x - skew_correction) < min(entry1.rect.height, entry2.rect.height):
+                    if abs(point2.x - point1.x + skew_correction) < min(entry1.rect.height, entry2.rect.height):
                         accepted = True
                         break
 
@@ -192,14 +192,18 @@ class Cluster(Generic[EntryT]):
                     if abs(deviation) <= max_skew_degrees:
                         deviations.append(deviation)
 
-        # gaussian_kde needs at least two values to estimate the bandwidth.
-        if len(deviations) < 2:
-            return deviations[0] if deviations else None
+        # Bandwidth of the Gaussian that each angle contributes to the density function: the standard deviation of
+        # the observed angles (Scott's rule would shrink it for large samples, which could produce multiple peaks),
+        # with a floor to keep the density stable for very concentrated samples.
+        bandwidth = max(0.5, np.std(deviations))
 
-        # Continuous orientation density function: each observed angle contributes a Gaussian (KDE). The bandwidth
-        # is set to the standard deviation of the observed angles (Scott's rule would shrink it for large samples,
-        # which could produce multiple peaks), with a floor to keep the density stable for very concentrated samples.
-        density = gaussian_kde(deviations, bw_method=lambda _: max(0.5, np.std(deviations)))
+        # If there is nothing to smooth over (fewer than two samples, or no spread at all), gaussian_kde would fail
+        # on the singular covariance matrix. In this degenerate case, the density peaks at the mean of the angles.
+        if len(deviations) < 2 or np.std(deviations) == 0:
+            return round(float(np.mean(deviations)), 2) if deviations else None
+
+        # Continuous orientation density function: each observed angle contributes a Gaussian (KDE).
+        density = gaussian_kde(deviations, bw_method=lambda _: bandwidth)
 
         # Find the peak of the density function, to an accuracy of 0.01 degrees. Note that gaussian_kde returns a
         # numpy array even for scalar input, so we convert the objective value (and the result) to a plain float.
