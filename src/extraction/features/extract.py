@@ -10,6 +10,7 @@ from extraction.features.extracted_borehole import ExtractedBorehole
 from extraction.features.material_descriptions.find import MaterialDescriptionExtractor
 from extraction.features.stratigraphy.borehole_candidate import BoreholeCandidate
 from extraction.features.stratigraphy.depth_description_alignment import match_lines_to_interval
+from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
@@ -34,6 +35,7 @@ from extraction.features.stratigraphy.sidebar.extractor.protocol_sidebar_extract
     ProtocolSidebarExtractor,
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
+from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import LineDetectionResult
 from swissgeol_doc_processing.text.find_description import get_description_lines
@@ -42,7 +44,7 @@ from swissgeol_doc_processing.text.textblock import (
     MaterialDescription,
     MaterialDescriptionLine,
 )
-from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.text.textline import TextLine, TextWord
 from swissgeol_doc_processing.text.textline_affinity import get_line_affinity
 from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
@@ -299,21 +301,34 @@ class BoreholeExtractor:
             for entry in column.entries:
                 used_entry_rects.add(entry.rect)
 
-        # We only consider the first two and last two words of every line as candidate entry for
-        # an AAboveB or Protocol sidebar.
-        words = [
-            word
-            for line in self.lines
-            for word in (line.words[:2] + line.words[-2:] if len(line.words) > 4 else line.words)
-        ]
-        words = sorted(words, key=lambda word: word.rect.y0)
-        a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
-            words,
+        # For every line, keep words from the start and from the end of the line as long as a DepthColumnEntry
+        # could be constructed from the word or the word length is at most 1. If the forward pass goes through the
+        # full line, the backward pass is empty. These words are potential depth entries for AAboveB and protocol
+        # sidebars.
+        def take_while_potential_depth_entry(words: list[TextWord]) -> list[DepthColumnEntry]:
+            result = []
+            for word in words:
+                entry = DepthColumnEntryExtractor.find_in_word(word)
+                if entry is None and len(word.text) > 1:
+                    break
+                if entry is not None:
+                    result.append(entry)
+            return result
+
+        entries: list[DepthColumnEntry] = []
+        for line in self.lines:
+            leading = take_while_potential_depth_entry(line.words)
+            trailing = take_while_potential_depth_entry(line.words[len(leading) :][::-1])
+            entries.extend(leading + trailing)
+
+        a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_entries(
+            entries,
             line_rtree,
             self.table_structures,
             list(used_entry_rects),
             sidebar_params=self.matching_params["depth_column_params"],
         )
+        entries = sorted(entries, key=lambda entry: entry.rect.y0)
 
         sidebars_noise.extend(a_above_b_sidebars_noise)
 
@@ -324,8 +339,8 @@ class BoreholeExtractor:
         block_protocol = self._should_block_protocol_with_a_above_b(a_above_b_sidebars_noise)
 
         if not block_protocol:
-            protocol_sidebars_noise = ProtocolSidebarExtractor.find_in_words(
-                words,
+            protocol_sidebars_noise = ProtocolSidebarExtractor.find_in_entries(
+                entries,
                 self.lines,
                 line_rtree,
                 list(used_entry_rects),

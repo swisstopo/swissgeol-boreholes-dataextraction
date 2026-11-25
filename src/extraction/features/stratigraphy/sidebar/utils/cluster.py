@@ -187,15 +187,21 @@ class Cluster(Generic[EntryT]):
                     if abs(deviation) <= max_skew_degrees:
                         deviations.append(deviation)
 
+        # If there is nothing to smooth over (fewer than two samples, or no spread at all), gaussian_kde would fail
+        # on the singular covariance matrix. In this degenerate case, the density peaks at the mean of the angles.
+        # Note: these guards must run before np.std()/np.mean() to avoid numpy warnings on empty slices.
+        if not deviations:
+            return None
+        if len(deviations) < 2:
+            return round(float(np.mean(deviations)), 2)
+
         # Bandwidth of the Gaussian that each angle contributes to the density function: the standard deviation of
         # the observed angles (Scott's rule would shrink it for large samples, which could produce multiple peaks),
         # with a floor to keep the density stable for very concentrated samples.
-        bandwidth = max(0.5, np.std(deviations))
-
-        # If there is nothing to smooth over (fewer than two samples, or no spread at all), gaussian_kde would fail
-        # on the singular covariance matrix. In this degenerate case, the density peaks at the mean of the angles.
-        if len(deviations) < 2 or np.std(deviations) == 0:
-            return round(float(np.mean(deviations)), 2) if deviations else None
+        std = float(np.std(deviations))
+        if std == 0:
+            return round(float(np.mean(deviations)), 2)
+        bandwidth = max(0.5, std)
 
         # Continuous orientation density function: each observed angle contributes a Gaussian (KDE).
         density = gaussian_kde(deviations, bw_method=lambda _: bandwidth)
