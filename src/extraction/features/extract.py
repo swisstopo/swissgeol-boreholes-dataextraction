@@ -305,21 +305,23 @@ class BoreholeExtractor:
         # could be constructed from the word or the word length is at most 1. If the forward pass goes through the
         # full line, the backward pass is empty. These words are potential depth entries for AAboveB and protocol
         # sidebars.
-        def take_while_potential_depth_entry(words: list[TextWord]) -> list[DepthColumnEntry]:
+        def take_while_potential_depth_entry(words: list[TextWord]) -> list[DepthColumnEntry | None]:
             result = []
             for word in words:
                 entry = DepthColumnEntryExtractor.find_in_word(word)
                 if entry is None and len(word.text) > 1:
                     break
-                if entry is not None:
-                    result.append(entry)
+                result.append(entry)
             return result
 
         entries: list[DepthColumnEntry] = []
         for line in self.lines:
             leading = take_while_potential_depth_entry(line.words)
             trailing = take_while_potential_depth_entry(line.words[len(leading) :][::-1])
-            entries.extend(leading + trailing)
+            for entry in leading + trailing:
+                if entry is not None:
+                    entries.append(entry)
+        entries = sorted(entries, key=lambda entry: entry.rect.y0)
 
         a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_entries(
             entries,
@@ -328,8 +330,6 @@ class BoreholeExtractor:
             list(used_entry_rects),
             sidebar_params=self.matching_params["depth_column_params"],
         )
-        entries = sorted(entries, key=lambda entry: entry.rect.y0)
-
         sidebars_noise.extend(a_above_b_sidebars_noise)
 
         for sidebar_noise in a_above_b_sidebars_noise:

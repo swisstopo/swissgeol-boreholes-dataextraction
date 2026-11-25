@@ -148,7 +148,6 @@ class Cluster(Generic[EntryT]):
                         for entry in cluster.entries:
                             assignments[entry].add(cluster_index)
                         clusters.append(cluster)
-
         return clusters
 
     @staticmethod
