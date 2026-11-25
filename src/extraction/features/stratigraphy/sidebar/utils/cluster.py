@@ -1,9 +1,14 @@
 """Module for clustering DepthColumnEntries when extracting sidebars."""
 
 import dataclasses
+import math
+from collections.abc import Callable
 from typing import Generic, Self, TypeVar
 
+import numpy as np
 import pymupdf
+from scipy.optimize import minimize_scalar
+from scipy.stats import gaussian_kde
 
 from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SidebarEntry
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
@@ -83,7 +88,8 @@ class Cluster(Generic[EntryT]):
             rect = entry.rect
             return Point(rect.x1, (rect.y0 + rect.y1) / 2)
 
-        max_skew_degrees = 5
+        skew_degrees = cls._estimate_skew(entries, point_getters=(left_edge, midpoint, right_edge))
+        print("Skew degrees:", skew_degrees)
 
         clusters: list[Cluster[EntryT]] = []
         # maps every entry to the set of indices of the clusters that contain this entry
@@ -110,9 +116,10 @@ class Cluster(Generic[EntryT]):
                 for point_getter in (midpoint, left_edge, right_edge):
                     point1 = point_getter(entry1)
                     point2 = point_getter(entry2)
-                    angle = Line(point1, point2).angle
-
-                    if abs(abs(angle) - 90) <= max_skew_degrees:
+                    # The two points align when their x-delta (after correcting for the estimated page skew) is less
+                    # than the smaller of the two entry heights.
+                    skew_correction = (point2.y - point1.y) * math.tan(math.radians(skew_degrees or 0))
+                    if abs(point2.x - point1.x - skew_correction) < min(entry1.rect.height, entry2.rect.height):
                         accepted = True
                         break
 
@@ -148,6 +155,58 @@ class Cluster(Generic[EntryT]):
                         clusters.append(cluster)
 
         return clusters
+
+    @staticmethod
+    def _estimate_skew(
+        entries: list[EntryT],
+        point_getters: tuple[Callable[[EntryT], Point], ...],
+    ) -> float | None:
+        """Estimate the skew (deviation from vertical) of the entries on the page, in degrees.
+
+        All angles of the lines connecting respectively the left-edges, midpoints and right-edges of the entries are
+        computed, keeping only the angles that are within 5 degrees of vertical. Each remaining angle contributes a
+        Gaussian to a continuous orientation density function (kernel density estimation). The peak of this density
+        function is found with an accuracy of 0.01 degrees. The result is 0 for perfectly vertical entries, positive
+        for a clockwise skew and negative for a counter-clockwise skew.
+
+        Args:
+            entries: The entries to estimate the skew from.
+            point_getters: Functions that map an entry to a representative point (e.g. left edge, midpoint, right
+                edge).
+
+        Returns:
+            The estimated skew in degrees, or None if no near-vertical pairs of entries were found.
+        """
+        max_skew_degrees = 5
+
+        # Collect all near-vertical angles, expressed as deviation from vertical in degrees.
+        deviations: list[float] = []
+        for point_getter in point_getters:
+            points = [point_getter(entry) for entry in entries]
+            for index1, point1 in enumerate(points):
+                for point2 in points[index1 + 1 :]:
+                    if point1 == point2:
+                        continue
+                    angle = Line(point1, point2).angle
+                    deviation = angle - 90 if angle > 0 else angle + 90
+                    if abs(deviation) <= max_skew_degrees:
+                        deviations.append(deviation)
+
+        # gaussian_kde needs at least two values to estimate the bandwidth.
+        if len(deviations) < 2:
+            return deviations[0] if deviations else None
+
+        # Continuous orientation density function: each observed angle contributes a Gaussian (KDE). The bandwidth
+        # is set to the standard deviation of the observed angles (Scott's rule would shrink it for large samples,
+        # which could produce multiple peaks), with a floor to keep the density stable for very concentrated samples.
+        density = gaussian_kde(deviations, bw_method=lambda _: max(0.5, np.std(deviations)))
+
+        # Find the peak of the density function, to an accuracy of 0.01 degrees. Note that gaussian_kde returns a
+        # numpy array even for scalar input, so we convert the objective value (and the result) to a plain float.
+        result = minimize_scalar(
+            lambda angle: -float(density(angle)), bounds=(-max_skew_degrees, max_skew_degrees), method="bounded"
+        )
+        return round(float(result.x), 2)
 
 
 @dataclasses.dataclass
