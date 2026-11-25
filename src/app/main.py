@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
 
 
 root_path = os.getenv("ENV", default="stage")
-app = FastAPI(lifespan=lifespan, servers=[{"url": f"/{root_path}"}])
+app = FastAPI(root_path=f"/{root_path}", lifespan=lifespan)
 
 
 def custom_openapi():
