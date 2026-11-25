@@ -315,7 +315,7 @@ class BoreholeExtractor:
             return result
 
         entries: list[DepthColumnEntry] = []
-        for line in self.lines:
+        for line in self.processed_lines:
             leading = take_while_potential_depth_entry(line.words)
             trailing = take_while_potential_depth_entry(line.words[len(leading) :][::-1])
             for entry in leading + trailing:

@@ -203,7 +203,7 @@ class Cluster(Generic[EntryT]):
         bandwidth = max(0.5, std)
 
         # Continuous orientation density function: each observed angle contributes a Gaussian (KDE).
-        density = gaussian_kde(deviations, bw_method=lambda _: bandwidth)
+        density = gaussian_kde(deviations, bw_method=bandwidth / float(np.std(deviations, ddof=1)))
 
         # Find the global peak of the density function, to an accuracy of 0.01 degrees. A local optimizer could
         # converge to a minor peak in a multimodal density, so instead we do an exhaustive grid search. The grid
