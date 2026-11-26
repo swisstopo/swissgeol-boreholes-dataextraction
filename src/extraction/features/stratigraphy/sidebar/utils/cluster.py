@@ -1,9 +1,12 @@
 """Module for clustering DepthColumnEntries when extracting sidebars."""
 
 import dataclasses
+import math
 from typing import Generic, Self, TypeVar
 
+import numpy as np
 import pymupdf
+from scipy.stats import gaussian_kde
 
 from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SidebarEntry
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
@@ -71,19 +74,8 @@ class Cluster(Generic[EntryT]):
         table_structure: TableStructure | None,
         allow_size_two: bool = False,
     ) -> list[Self]:
-        def midpoint(entry: EntryT) -> Point:
-            rect = entry.rect
-            return Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
-
-        def left_edge(entry: EntryT) -> Point:
-            rect = entry.rect
-            return Point(rect.x0, (rect.y0 + rect.y1) / 2)
-
-        def right_edge(entry: EntryT) -> Point:
-            rect = entry.rect
-            return Point(rect.x1, (rect.y0 + rect.y1) / 2)
-
-        max_skew_degrees = 5
+        skew_degrees = cls._estimate_skew(entries)
+        skew_slope = math.tan(math.radians(skew_degrees or 0))
 
         clusters: list[Cluster[EntryT]] = []
         # maps every entry to the set of indices of the clusters that contain this entry
@@ -105,18 +97,15 @@ class Cluster(Generic[EntryT]):
                     # skip if the entries already belong to the same cluster
                     continue
 
-                # check if rects align (left edge, right edge or midpoint)
-                accepted = False
-                for point_getter in (midpoint, left_edge, right_edge):
-                    point1 = point_getter(entry1)
-                    point2 = point_getter(entry2)
-                    angle = Line(point1, point2).angle
+                # Check if the x-ranges of the two entries overlap after correcting for the estimated page skew:
+                # each x-coordinate of the bottom entry is shifted back to the level of the top entry.
+                middle1 = (entry1.rect.y0 + entry1.rect.y1) / 2
+                middle2 = (entry2.rect.y0 + entry2.rect.y1) / 2
+                skew_correction = (middle2 - middle1) * skew_slope
+                corrected_x0 = entry2.rect.x0 + skew_correction
+                corrected_x1 = entry2.rect.x1 + skew_correction
 
-                    if abs(abs(angle) - 90) <= max_skew_degrees:
-                        accepted = True
-                        break
-
-                if accepted:
+                if max(entry1.rect.x0, corrected_x0) < min(entry1.rect.x1, corrected_x1):
                     cluster_span = ClusterSpan(entry1.rect, entry2.rect)
 
                     intermediate_entries = []
@@ -146,8 +135,77 @@ class Cluster(Generic[EntryT]):
                         for entry in cluster.entries:
                             assignments[entry].add(cluster_index)
                         clusters.append(cluster)
-
         return clusters
+
+    @staticmethod
+    def _estimate_skew(entries: list[EntryT]) -> float | None:
+        """Estimate the skew (deviation from vertical) of the entries on the page, in degrees.
+
+        All angles of the lines connecting respectively the left-edges, midpoints and right-edges of the entries are
+        computed, keeping only the angles that are within 5 degrees of vertical. Each remaining angle contributes a
+        Gaussian to a continuous orientation density function (kernel density estimation). The peak of this density
+        function is found with an accuracy of 0.01 degrees. The result is 0 for perfectly vertical entries, positive
+        for a clockwise skew and negative for a counter-clockwise skew.
+
+        Args:
+            entries: The entries to estimate the skew from.
+
+        Returns:
+            The estimated skew in degrees, or None if no near-vertical pairs of entries were found.
+        """
+        max_skew_degrees = 5
+
+        def midpoint(entry: EntryT) -> Point:
+            rect = entry.rect
+            return Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
+
+        def left_edge(entry: EntryT) -> Point:
+            rect = entry.rect
+            return Point(rect.x0, (rect.y0 + rect.y1) / 2)
+
+        def right_edge(entry: EntryT) -> Point:
+            rect = entry.rect
+            return Point(rect.x1, (rect.y0 + rect.y1) / 2)
+
+        # Collect all near-vertical angles, expressed as deviation from vertical in degrees.
+        deviations: list[float] = []
+        for point_getter in [left_edge, midpoint, right_edge]:
+            points = [point_getter(entry) for entry in entries]
+            for index1, point1 in enumerate(points):
+                for point2 in points[index1 + 1 :]:
+                    if point1 == point2:
+                        continue
+                    angle = Line(point1, point2).angle
+                    deviation = angle - 90 if angle > 0 else angle + 90
+                    if abs(deviation) <= max_skew_degrees:
+                        deviations.append(deviation)
+
+        # If there is nothing to smooth over (fewer than two samples, or no spread at all), gaussian_kde would fail
+        # on the singular covariance matrix. In this degenerate case, the density peaks at the mean of the angles.
+        # Note: these guards must run before np.std()/np.mean() to avoid numpy warnings on empty slices.
+        if not deviations:
+            return None
+        if len(deviations) < 2:
+            return round(float(np.mean(deviations)), 2)
+
+        # Bandwidth of the Gaussian that each angle contributes to the density function: the standard deviation of
+        # the observed angles (Scott's rule would shrink it for large samples, which could produce multiple peaks),
+        # with a floor to keep the density stable for very concentrated samples.
+        std = float(np.std(deviations))
+        if std == 0:
+            return round(float(np.mean(deviations)), 2)
+        bandwidth = max(0.5, std)
+
+        # Continuous orientation density function: each observed angle contributes a Gaussian (KDE).
+        # The bw_method factor will be scaled by the standard deviation of the values, but we actualy want a fixed
+        # bandwidth. Therefore, we divide by the std before passing the parameter.
+        density = gaussian_kde(deviations, bw_method=bandwidth / float(np.std(deviations, ddof=1)))
+
+        # Find the global peak of the density function, to an accuracy of 0.01 degrees. A local optimizer could
+        # converge to a minor peak in a multimodal density, so instead we do an exhaustive grid search. The grid
+        # spacing of 0.005 degrees is well below the bandwidth, so the global peak cannot be missed.
+        grid = np.arange(-max_skew_degrees, max_skew_degrees + 0.005, 0.005)
+        return round(float(grid[np.argmax(density(grid))]), 2)
 
 
 @dataclasses.dataclass

@@ -95,8 +95,8 @@ def test_aabovebsidebarextractor_arithmetic_progression():  # noqa: D103
     ]
     word_rtree = TextLineRTree([TextLine([word]) for word in all_words])
     """Test the AAboveBSidebarExtractor with an arithmetic progression."""
-    sidebars_noise = AAboveBSidebarExtractor.find_in_words(
-        all_words,
+    sidebars_noise = AAboveBSidebarExtractor.find_in_entries(
+        DepthColumnEntryExtractor.find_in_words(all_words),
         word_rtree,
         table_structures=[],
         used_entry_rects=[],
@@ -116,8 +116,8 @@ def test_aabovebsidebarextractor():  # noqa: D103
         TextWord(pymupdf.Rect(0, 8, 5, 9), "50.0", PAGE_NUMBER),
     ]
     word_rtree = TextLineRTree([TextLine([word]) for word in all_words])
-    sidebars_noise = AAboveBSidebarExtractor.find_in_words(
-        all_words,
+    sidebars_noise = AAboveBSidebarExtractor.find_in_entries(
+        DepthColumnEntryExtractor.find_in_words(all_words),
         word_rtree,
         table_structures=[],
         used_entry_rects=[],
@@ -149,8 +149,8 @@ def test_aabovebsidebarextractor_two_column():  # noqa: D103
         TextWord(pymupdf.Rect(20, 10, 25, 11), "61.0", PAGE_NUMBER),
     ]
     word_rtree = TextLineRTree([TextLine([word]) for word in all_words])
-    sidebars_noise = AAboveBSidebarExtractor.find_in_words(
-        all_words,
+    sidebars_noise = AAboveBSidebarExtractor.find_in_entries(
+        DepthColumnEntryExtractor.find_in_words(all_words),
         word_rtree,
         table_structures=[],
         used_entry_rects=[],

@@ -5,14 +5,12 @@ from decimal import Decimal
 
 import pymupdf
 
-from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNoise, noise_count
 from extraction.features.stratigraphy.sidebar.utils.a_above_b_sidebar_validator import AAboveBSidebarValidator
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
 from extraction.features.stratigraphy.sidebar.utils.entries_per_table import TableEntries
 from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
-from swissgeol_doc_processing.text.textline import TextWord
 from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.table_detection import TableStructure
 
@@ -63,17 +61,17 @@ class AAboveBSidebarExtractor:
             return set()
 
     @staticmethod
-    def find_in_words(
-        all_words: list[TextWord],
+    def find_in_entries(
+        all_entries: list[DepthColumnEntry],
         line_rtree: TextLineRTree,
         table_structures: list[TableStructure],
         used_entry_rects: list[pymupdf.Rect],
         sidebar_params: dict,
     ) -> list[SidebarNoise]:
-        """Construct all possible AAboveBSidebar objects from the given words.
+        """Construct all possible AAboveBSidebar objects from the given depth column entries.
 
         Args:
-            all_words (list[TextWord]): All words in the page.
+            all_entries (list[DepthColumnEntry]): All depth column entries on the page.
             line_rtree (TextLineRTree): Pre-built R-tree for spatial queries.
             table_structures (list[TableStructure]): List of identified table-like structures on the page.
             used_entry_rects (list[pymupdf.Rect]): Part of the document to ignore.
@@ -86,9 +84,7 @@ class AAboveBSidebarExtractor:
         # a table-like structure to be more computationally efficient in clustering, and to avoid clusters that go
         # across several borehole profiles on the same page (e.g. 269126143-bp.pdf).
         filtered_entries = [
-            entry
-            for entry in DepthColumnEntryExtractor.find_in_words(all_words)
-            if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
+            entry for entry in all_entries if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
         ]
         entry_partitions = TableEntries.group_entries_by_table(table_structures, filtered_entries)
         clusters = [

@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import pymupdf
 
-from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from extraction.features.stratigraphy.sidebar.classes.protocol_sidebar import ProtocolSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNoise, noise_count
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
 from extraction.features.stratigraphy.sidebar.utils.entries_per_table import TableEntries
 from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
-from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.table_detection import TableStructure
 
@@ -20,18 +19,18 @@ class ProtocolSidebarExtractor:
     """Class that finds ProtocolSidebar instances in a borehole profile."""
 
     @staticmethod
-    def find_in_words(
-        all_words: list[TextWord],
+    def find_in_entries(
+        all_entries: list[DepthColumnEntry],
         lines: list[TextLine],
         line_rtree: TextLineRTree,
         used_entry_rects: list[pymupdf.Rect],
         table_structures: list[TableStructure],
         sidebar_params: dict,
     ) -> list[SidebarNoise]:
-        """Construct all possible ProtocolSidebar objects from the given words.
+        """Construct all possible ProtocolSidebar objects from the given depth column entries.
 
         Args:
-            all_words (list[TextWord]): All words in the page.
+            all_entries (list[DepthColumnEntry]): All depth column entries on the page.
             lines (list[TextLine]): All text lines in the page.
             line_rtree (TextLineRTree): Pre-built R-tree for spatial queries.
             used_entry_rects (list[pymupdf.Rect]): Part of the document to ignore.
@@ -42,9 +41,7 @@ class ProtocolSidebarExtractor:
             list[SidebarNoise]: Valid ProtocolSidebar objects wrapped with noise count.
         """
         entries = [
-            entry
-            for entry in DepthColumnEntryExtractor.find_in_words(all_words)
-            if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
+            entry for entry in all_entries if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
         ]
 
         if not entries:
