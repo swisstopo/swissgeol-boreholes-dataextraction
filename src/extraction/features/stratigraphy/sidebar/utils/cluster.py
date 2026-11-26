@@ -2,7 +2,6 @@
 
 import dataclasses
 import math
-from collections.abc import Callable
 from typing import Generic, Self, TypeVar
 
 import numpy as np
@@ -75,19 +74,7 @@ class Cluster(Generic[EntryT]):
         table_structure: TableStructure | None,
         allow_size_two: bool = False,
     ) -> list[Self]:
-        def midpoint(entry: EntryT) -> Point:
-            rect = entry.rect
-            return Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
-
-        def left_edge(entry: EntryT) -> Point:
-            rect = entry.rect
-            return Point(rect.x0, (rect.y0 + rect.y1) / 2)
-
-        def right_edge(entry: EntryT) -> Point:
-            rect = entry.rect
-            return Point(rect.x1, (rect.y0 + rect.y1) / 2)
-
-        skew_degrees = cls._estimate_skew(entries, point_getters=(left_edge, midpoint, right_edge))
+        skew_degrees = cls._estimate_skew(entries)
         skew_slope = math.tan(math.radians(skew_degrees or 0))
 
         clusters: list[Cluster[EntryT]] = []
@@ -151,10 +138,7 @@ class Cluster(Generic[EntryT]):
         return clusters
 
     @staticmethod
-    def _estimate_skew(
-        entries: list[EntryT],
-        point_getters: tuple[Callable[[EntryT], Point], ...],
-    ) -> float | None:
+    def _estimate_skew(entries: list[EntryT]) -> float | None:
         """Estimate the skew (deviation from vertical) of the entries on the page, in degrees.
 
         All angles of the lines connecting respectively the left-edges, midpoints and right-edges of the entries are
@@ -165,17 +149,27 @@ class Cluster(Generic[EntryT]):
 
         Args:
             entries: The entries to estimate the skew from.
-            point_getters: Functions that map an entry to a representative point (e.g. left edge, midpoint, right
-                edge).
 
         Returns:
             The estimated skew in degrees, or None if no near-vertical pairs of entries were found.
         """
         max_skew_degrees = 5
 
+        def midpoint(entry: EntryT) -> Point:
+            rect = entry.rect
+            return Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
+
+        def left_edge(entry: EntryT) -> Point:
+            rect = entry.rect
+            return Point(rect.x0, (rect.y0 + rect.y1) / 2)
+
+        def right_edge(entry: EntryT) -> Point:
+            rect = entry.rect
+            return Point(rect.x1, (rect.y0 + rect.y1) / 2)
+
         # Collect all near-vertical angles, expressed as deviation from vertical in degrees.
         deviations: list[float] = []
-        for point_getter in point_getters:
+        for point_getter in [left_edge, midpoint, right_edge]:
             points = [point_getter(entry) for entry in entries]
             for index1, point1 in enumerate(points):
                 for point2 in points[index1 + 1 :]:
@@ -203,6 +197,8 @@ class Cluster(Generic[EntryT]):
         bandwidth = max(0.5, std)
 
         # Continuous orientation density function: each observed angle contributes a Gaussian (KDE).
+        # The bw_method factor will be scaled by the standard deviation of the values, but we actualy want a fixed
+        # bandwidth. Therefore, we divide by the std before passing the parameter.
         density = gaussian_kde(deviations, bw_method=bandwidth / float(np.std(deviations, ddof=1)))
 
         # Find the global peak of the density function, to an accuracy of 0.01 degrees. A local optimizer could
